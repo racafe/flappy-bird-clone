@@ -49,6 +49,29 @@ function playDeathSound() {
 }
 
 /**
+ * Play score sound effect using Web Audio API
+ */
+function playScoreSound() {
+    if (!audioContext) return;
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.type = 'square';
+    oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.05);
+
+    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.1);
+}
+
+/**
  * Check AABB collision between two rectangles
  * @param {Object} a - First rectangle {x, y, width, height}
  * @param {Object} b - Second rectangle {x, y, width, height}
@@ -76,6 +99,7 @@ const bird = new Bird(BIRD_START_X, BIRD_START_Y);
 const pipes = [];
 let pipeSpawnTimer = 0;
 let isGameOver = false;
+let score = 0;
 
 /**
  * Resize canvas to maintain aspect ratio while fitting the viewport
@@ -106,11 +130,25 @@ function resizeCanvas() {
 }
 
 /**
+ * Reset game to initial state
+ */
+function resetGame() {
+    bird.reset(BIRD_START_X, BIRD_START_Y);
+    pipes.length = 0;
+    pipeSpawnTimer = 0;
+    isGameOver = false;
+    score = 0;
+}
+
+/**
  * Handle bird flap input
  */
 function handleFlap() {
     initAudio();
-    if (isGameOver) return;
+    if (isGameOver) {
+        resetGame();
+        return;
+    }
     bird.flap();
 }
 
@@ -236,11 +274,40 @@ function update() {
     for (let i = pipes.length - 1; i >= 0; i--) {
         pipes[i].update();
 
+        // Check if bird passed this pipe (for scoring)
+        if (!pipes[i].passed && bird.x > pipes[i].x + pipes[i].width) {
+            pipes[i].passed = true;
+            score++;
+            playScoreSound();
+        }
+
         // Remove pipes that are fully off-screen (left side)
         if (pipes[i].isOffScreen()) {
             pipes.splice(i, 1);
         }
     }
+}
+
+/**
+ * Draw text with pixel font style (outline + fill for visibility)
+ * @param {string} text - Text to draw
+ * @param {number} x - X position (center)
+ * @param {number} y - Y position
+ * @param {number} size - Font size
+ */
+function drawPixelText(text, x, y, size) {
+    ctx.font = `bold ${size}px "Courier New", monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    // Draw outline
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 4;
+    ctx.strokeText(text, x, y);
+
+    // Draw fill
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(text, x, y);
 }
 
 /**
@@ -266,6 +333,28 @@ function render() {
     // Draw grass on top of ground
     ctx.fillStyle = '#228B22';
     ctx.fillRect(0, GAME_HEIGHT - GROUND_HEIGHT, GAME_WIDTH, 10);
+
+    // Draw score (top center)
+    drawPixelText(score.toString(), GAME_WIDTH / 2, 20, 48);
+
+    // Draw game over screen
+    if (isGameOver) {
+        // Semi-transparent overlay
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+        // Game Over text
+        drawPixelText('GAME OVER', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, 36);
+
+        // Final score
+        drawPixelText(`Score: ${score}`, GAME_WIDTH / 2, GAME_HEIGHT / 2, 28);
+
+        // Restart instruction
+        ctx.font = 'bold 16px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('Press SPACE to restart', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 60);
+    }
 }
 
 /**

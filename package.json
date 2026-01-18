@@ -1,0 +1,17 @@
+{
+  "name": "flappy-bird-clone",
+  "version": "1.0.0",
+  "description": "A Flappy Bird clone game built with TypeScript and ES6 modules",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["flappy-bird", "game", "typescript", "canvas"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

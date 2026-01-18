@@ -1,32 +1,38 @@
-// Bird constants
-const GRAVITY = 0.5;
-const FLAP_VELOCITY = -8;
-const MAX_FALL_VELOCITY = 10;
-const ROTATION_SPEED = 3;
-const MAX_UP_ROTATION = -30;
-const MAX_DOWN_ROTATION = 90;
+/**
+ * Bird Module
+ * Handles bird entity, physics, animation, and rendering
+ */
 
-// Bird sprite dimensions
-const BIRD_WIDTH = 34;
-const BIRD_HEIGHT = 24;
+import { BoundingBox, BirdConfig, RenderContext } from './types.js';
+
+/** Default bird configuration */
+const DEFAULT_CONFIG: BirdConfig = {
+    gravity: 0.5,
+    flapVelocity: -8,
+    maxFallVelocity: 10,
+    rotationSpeed: 3,
+    maxUpRotation: -30,
+    maxDownRotation: 90,
+    width: 34,
+    height: 24
+};
+
+/** Wing position for animation frames */
+type WingPosition = 'up' | 'mid' | 'down';
 
 /**
  * Creates pixel art bird sprite frames on offscreen canvases
- * @returns {HTMLCanvasElement[]} Array of 3 animation frames
  */
-function createBirdSprites() {
-    const frames = [];
-
-    // Wing positions for each frame: 0 = up, 1 = mid, 2 = down
-    const wingPositions = ['up', 'mid', 'down'];
+function createBirdSprites(): HTMLCanvasElement[] {
+    const frames: HTMLCanvasElement[] = [];
+    const wingPositions: WingPosition[] = ['up', 'mid', 'down'];
 
     for (const wingPos of wingPositions) {
         const canvas = document.createElement('canvas');
-        canvas.width = BIRD_WIDTH;
-        canvas.height = BIRD_HEIGHT;
-        const ctx = canvas.getContext('2d');
+        canvas.width = DEFAULT_CONFIG.width;
+        canvas.height = DEFAULT_CONFIG.height;
+        const ctx = canvas.getContext('2d')!;
 
-        // Enable pixelated rendering
         ctx.imageSmoothingEnabled = false;
 
         // Bird body (yellow)
@@ -72,17 +78,14 @@ function createBirdSprites() {
 
         // Outline (dark)
         ctx.fillStyle = '#2C3E50';
-        // Top outline
         ctx.fillRect(12, 0, 8, 2);
         ctx.fillRect(8, 2, 4, 2);
         ctx.fillRect(20, 2, 4, 2);
         ctx.fillRect(6, 4, 2, 2);
         ctx.fillRect(22, 4, 2, 4);
-        // Bottom outline
         ctx.fillRect(4, 18, 22, 2);
         ctx.fillRect(2, 16, 2, 2);
         ctx.fillRect(26, 16, 2, 2);
-        // Side outlines
         ctx.fillRect(2, 6, 2, 10);
 
         frames.push(canvas);
@@ -92,43 +95,51 @@ function createBirdSprites() {
 }
 
 export class Bird {
-    constructor(x, y) {
+    x: number;
+    y: number;
+    velocity: number = 0;
+    rotation: number = 0;
+
+    readonly width: number;
+    readonly height: number;
+
+    private config: BirdConfig;
+    private sprites: HTMLCanvasElement[];
+    private currentFrame: number = 0;
+    private animationTimer: number = 0;
+    private animationSpeed: number = 8;
+    private isFlapping: boolean = false;
+    private flapAnimationTimer: number = 0;
+
+    constructor(x: number, y: number, config: Partial<BirdConfig> = {}) {
+        this.config = { ...DEFAULT_CONFIG, ...config };
         this.x = x;
         this.y = y;
-        this.width = BIRD_WIDTH;
-        this.height = BIRD_HEIGHT;
-        this.velocity = 0;
-        this.rotation = 0;
-
-        // Animation state
+        this.width = this.config.width;
+        this.height = this.config.height;
         this.sprites = createBirdSprites();
-        this.currentFrame = 0;
-        this.animationTimer = 0;
-        this.animationSpeed = 8; // frames per animation frame change
-        this.isFlapping = false;
-        this.flapAnimationTimer = 0;
     }
 
     /**
      * Make the bird flap (jump)
      */
-    flap() {
-        this.velocity = FLAP_VELOCITY;
+    flap(): void {
+        this.velocity = this.config.flapVelocity;
         this.isFlapping = true;
         this.flapAnimationTimer = 0;
-        this.currentFrame = 0; // Start from wing up
+        this.currentFrame = 0;
     }
 
     /**
      * Update bird physics and animation
      */
-    update() {
+    update(): void {
         // Apply gravity
-        this.velocity += GRAVITY;
+        this.velocity += this.config.gravity;
 
         // Cap fall velocity
-        if (this.velocity > MAX_FALL_VELOCITY) {
-            this.velocity = MAX_FALL_VELOCITY;
+        if (this.velocity > this.config.maxFallVelocity) {
+            this.velocity = this.config.maxFallVelocity;
         }
 
         // Update position
@@ -136,33 +147,29 @@ export class Bird {
 
         // Update rotation based on velocity
         if (this.velocity < 0) {
-            // Rising - rotate up
-            this.rotation += (MAX_UP_ROTATION - this.rotation) * 0.2;
+            this.rotation += (this.config.maxUpRotation - this.rotation) * 0.2;
         } else {
-            // Falling - rotate down gradually
-            this.rotation += ROTATION_SPEED;
-            if (this.rotation > MAX_DOWN_ROTATION) {
-                this.rotation = MAX_DOWN_ROTATION;
+            this.rotation += this.config.rotationSpeed;
+            if (this.rotation > this.config.maxDownRotation) {
+                this.rotation = this.config.maxDownRotation;
             }
         }
 
         // Update animation
         this.animationTimer++;
         if (this.isFlapping) {
-            // Fast flap animation when actively flapping
             this.flapAnimationTimer++;
             if (this.flapAnimationTimer < 4) {
-                this.currentFrame = 0; // Wing up
+                this.currentFrame = 0;
             } else if (this.flapAnimationTimer < 8) {
-                this.currentFrame = 1; // Wing mid
+                this.currentFrame = 1;
             } else if (this.flapAnimationTimer < 12) {
-                this.currentFrame = 2; // Wing down
+                this.currentFrame = 2;
             } else {
                 this.isFlapping = false;
-                this.currentFrame = 1; // Return to mid
+                this.currentFrame = 1;
             }
         } else {
-            // Gentle idle animation
             if (this.animationTimer % this.animationSpeed === 0) {
                 this.currentFrame = (this.currentFrame + 1) % 3;
             }
@@ -171,18 +178,13 @@ export class Bird {
 
     /**
      * Draw the bird on the canvas
-     * @param {CanvasRenderingContext2D} ctx
      */
-    draw(ctx) {
+    draw(ctx: RenderContext): void {
         ctx.save();
 
-        // Move to bird center for rotation
         ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
-
-        // Apply rotation (convert to radians)
         ctx.rotate(this.rotation * Math.PI / 180);
 
-        // Draw sprite centered
         ctx.drawImage(
             this.sprites[this.currentFrame],
             -this.width / 2,
@@ -196,10 +198,8 @@ export class Bird {
 
     /**
      * Reset bird to initial position
-     * @param {number} x
-     * @param {number} y
      */
-    reset(x, y) {
+    reset(x: number, y: number): void {
         this.x = x;
         this.y = y;
         this.velocity = 0;
@@ -210,10 +210,8 @@ export class Bird {
 
     /**
      * Get bird bounding box for collision detection
-     * @returns {{x: number, y: number, width: number, height: number}}
      */
-    getBoundingBox() {
-        // Slightly smaller hitbox for better gameplay feel
+    getBoundingBox(): BoundingBox {
         const padding = 4;
         return {
             x: this.x + padding,

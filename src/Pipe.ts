@@ -1,20 +1,36 @@
-// Pipe constants
-const PIPE_WIDTH = 52;
-const PIPE_GAP = 120; // Gap size between top and bottom pipes
-const PIPE_SPEED = 2;
+/**
+ * Pipe Module
+ * Handles pipe obstacles, movement, and rendering
+ */
+
+import { PipeBoundingBoxes, PipeConfig, RenderContext } from './types.js';
+
+/** Default pipe configuration */
+const DEFAULT_CONFIG: PipeConfig = {
+    width: 52,
+    gap: 120,
+    speed: 2
+};
+
+/** Pipe sprite cache */
+interface PipeSprites {
+    top: HTMLCanvasElement;
+    bottom: HTMLCanvasElement;
+}
+
+let sharedSprites: PipeSprites | null = null;
 
 /**
  * Creates pixel art pipe sprites (top and bottom variants)
- * @returns {{top: HTMLCanvasElement, bottom: HTMLCanvasElement}}
  */
-function createPipeSprites() {
-    const sprites = {};
+function createPipeSprites(): PipeSprites {
+    const PIPE_WIDTH = DEFAULT_CONFIG.width;
 
     // Create bottom pipe sprite
     const bottomCanvas = document.createElement('canvas');
     bottomCanvas.width = PIPE_WIDTH;
-    bottomCanvas.height = 400; // Max height for pipe
-    const bottomCtx = bottomCanvas.getContext('2d');
+    bottomCanvas.height = 400;
+    const bottomCtx = bottomCanvas.getContext('2d')!;
     bottomCtx.imageSmoothingEnabled = false;
 
     // Main pipe body (green)
@@ -47,25 +63,19 @@ function createPipeSprites() {
 
     // Outline (dark green/black)
     bottomCtx.fillStyle = '#2C5F0F';
-    // Top edge of cap
     bottomCtx.fillRect(0, 0, PIPE_WIDTH, 2);
-    // Left edge
     bottomCtx.fillRect(0, 0, 2, 26);
     bottomCtx.fillRect(2, 26, 2, 374);
-    // Right edge
     bottomCtx.fillRect(PIPE_WIDTH - 2, 0, 2, 26);
     bottomCtx.fillRect(PIPE_WIDTH - 4, 26, 2, 374);
-    // Bottom of cap
     bottomCtx.fillRect(0, 24, 4, 2);
     bottomCtx.fillRect(PIPE_WIDTH - 4, 24, 4, 2);
-
-    sprites.bottom = bottomCanvas;
 
     // Create top pipe sprite (flipped version)
     const topCanvas = document.createElement('canvas');
     topCanvas.width = PIPE_WIDTH;
     topCanvas.height = 400;
-    const topCtx = topCanvas.getContext('2d');
+    const topCtx = topCanvas.getContext('2d')!;
     topCtx.imageSmoothingEnabled = false;
 
     // Main pipe body (green)
@@ -98,27 +108,21 @@ function createPipeSprites() {
 
     // Outline (dark green/black)
     topCtx.fillStyle = '#2C5F0F';
-    // Bottom edge of cap
     topCtx.fillRect(0, 398, PIPE_WIDTH, 2);
-    // Left edge
     topCtx.fillRect(0, 374, 2, 26);
     topCtx.fillRect(2, 0, 2, 374);
-    // Right edge
     topCtx.fillRect(PIPE_WIDTH - 2, 374, 2, 26);
     topCtx.fillRect(PIPE_WIDTH - 4, 0, 2, 374);
-    // Top of cap
     topCtx.fillRect(0, 374, 4, 2);
     topCtx.fillRect(PIPE_WIDTH - 4, 374, 4, 2);
 
-    sprites.top = topCanvas;
-
-    return sprites;
+    return { top: topCanvas, bottom: bottomCanvas };
 }
 
-// Shared sprites for all pipes
-let sharedSprites = null;
-
-function getSprites() {
+/**
+ * Get shared pipe sprites (lazy initialization)
+ */
+function getSprites(): PipeSprites {
     if (!sharedSprites) {
         sharedSprites = createPipeSprites();
     }
@@ -126,23 +130,39 @@ function getSprites() {
 }
 
 export class Pipe {
+    x: number;
+    readonly width: number;
+    readonly gap: number;
+    readonly speed: number;
+    passed: boolean = false;
+
+    private sprites: PipeSprites;
+    private topPipeHeight: number;
+    private bottomPipeY: number;
+    private bottomPipeHeight: number;
+
     /**
      * Create a pipe pair
-     * @param {number} x - X position (right side of screen)
-     * @param {number} gapY - Y position of the gap center
-     * @param {number} gameHeight - Total game height
-     * @param {number} groundHeight - Height of the ground
+     * @param x - X position (right side of screen)
+     * @param gapY - Y position of the gap center
+     * @param gameHeight - Total game height
+     * @param groundHeight - Height of the ground
+     * @param config - Optional pipe configuration
      */
-    constructor(x, gapY, gameHeight, groundHeight) {
+    constructor(
+        x: number,
+        gapY: number,
+        gameHeight: number,
+        groundHeight: number,
+        config: Partial<PipeConfig> = {}
+    ) {
+        const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+
         this.x = x;
-        this.gapY = gapY;
-        this.width = PIPE_WIDTH;
-        this.gap = PIPE_GAP;
-        this.speed = PIPE_SPEED;
-        this.gameHeight = gameHeight;
-        this.groundHeight = groundHeight;
+        this.width = mergedConfig.width;
+        this.gap = mergedConfig.gap;
+        this.speed = mergedConfig.speed;
         this.sprites = getSprites();
-        this.passed = false; // For scoring
 
         // Calculate pipe heights
         this.topPipeHeight = gapY - this.gap / 2;
@@ -153,28 +173,26 @@ export class Pipe {
     /**
      * Update pipe position
      */
-    update() {
+    update(): void {
         this.x -= this.speed;
     }
 
     /**
      * Check if pipe is off screen (left side)
-     * @returns {boolean}
      */
-    isOffScreen() {
+    isOffScreen(): boolean {
         return this.x + this.width < 0;
     }
 
     /**
      * Draw the pipe pair
-     * @param {CanvasRenderingContext2D} ctx
      */
-    draw(ctx) {
+    draw(ctx: RenderContext): void {
         // Draw top pipe
         if (this.topPipeHeight > 0) {
             ctx.drawImage(
                 this.sprites.top,
-                0, 400 - this.topPipeHeight, // Source: bottom portion of sprite
+                0, 400 - this.topPipeHeight,
                 this.width, this.topPipeHeight,
                 this.x, 0,
                 this.width, this.topPipeHeight
@@ -195,9 +213,8 @@ export class Pipe {
 
     /**
      * Get bounding boxes for collision detection
-     * @returns {{top: {x: number, y: number, width: number, height: number}, bottom: {x: number, y: number, width: number, height: number}}}
      */
-    getBoundingBoxes() {
+    getBoundingBoxes(): PipeBoundingBoxes {
         return {
             top: {
                 x: this.x,
@@ -215,4 +232,7 @@ export class Pipe {
     }
 }
 
-export { PIPE_WIDTH, PIPE_GAP, PIPE_SPEED };
+/** Export pipe constants for external use */
+export const PIPE_WIDTH = DEFAULT_CONFIG.width;
+export const PIPE_GAP = DEFAULT_CONFIG.gap;
+export const PIPE_SPEED = DEFAULT_CONFIG.speed;

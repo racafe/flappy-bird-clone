@@ -3,7 +3,7 @@
  * Core game orchestration, state management, and game loop
  */
 
-import { GameConfig, GameState, GameStats, BoundingBox } from './types.js';
+import { GameConfig, GameState, MenuScreen, GameStats, BoundingBox } from './types.js';
 import { Bird } from './Bird.js';
 import { Pipe } from './Pipe.js';
 import { UI } from './UI.js';
@@ -33,7 +33,7 @@ export class Game {
     private pipes: Pipe[] = [];
     private pipeSpawnTimer: number = 0;
 
-    private state: GameState = GameState.READY;
+    private state: GameState = GameState.MENU;
     private score: number = 0;
     private highScore: number = 0;
     private isNewHighScore: boolean = false;
@@ -126,6 +126,12 @@ export class Game {
                 this.pendingAchievement = notifications[0];
                 this.achievementDisplayTimer = 0;
             }
+        }
+
+        if (this.state === GameState.MENU) {
+            // Update menu animations
+            this.ui.updateMenuAnimation();
+            return;
         }
 
         if (this.state === GameState.READY) {
@@ -232,6 +238,56 @@ export class Game {
     }
 
     /**
+     * Handle menu button click
+     */
+    private handleMenuClick(x: number, y: number): void {
+        const buttons = this.ui.getMenuButtons();
+
+        for (const button of buttons) {
+            if (
+                x >= button.x &&
+                x <= button.x + button.width &&
+                y >= button.y &&
+                y <= button.y + button.height
+            ) {
+                audio.init();
+                audio.playClick();
+
+                switch (button.action) {
+                    case 'start':
+                        this.state = GameState.READY;
+                        this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
+                        break;
+                    case 'howtoplay':
+                        this.ui.setCurrentMenuScreen(MenuScreen.HOW_TO_PLAY);
+                        break;
+                    case 'achievements':
+                        this.ui.setCurrentMenuScreen(MenuScreen.ACHIEVEMENTS);
+                        break;
+                    case 'back':
+                        this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
+                        break;
+                }
+                return;
+            }
+        }
+    }
+
+    /**
+     * Get canvas coordinates from mouse/touch event
+     */
+    private getCanvasCoordinates(clientX: number, clientY: number): { x: number; y: number } {
+        const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.config.width / rect.width;
+        const scaleY = this.config.height / rect.height;
+
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+
+    /**
      * Toggle pause state
      */
     private togglePause(): void {
@@ -249,10 +305,13 @@ export class Game {
         this.bird.reset(this.config.birdStartX, this.config.birdStartY);
         this.pipes = [];
         this.pipeSpawnTimer = 0;
-        this.state = GameState.READY;
+        this.state = GameState.MENU;
+        this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
         this.score = 0;
         this.isNewHighScore = false;
         this.flapsCount = 0;
+        // Reload high score in case it changed
+        this.highScore = storage.getHighScore();
     }
 
     /**
@@ -416,23 +475,44 @@ export class Game {
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
                 e.preventDefault();
-                this.handleFlap();
+                if (this.state !== GameState.MENU) {
+                    this.handleFlap();
+                }
             } else if (e.code === 'KeyP' || e.code === 'Escape') {
                 e.preventDefault();
-                this.togglePause();
+                if (this.state === GameState.MENU) {
+                    // Escape goes back in menu
+                    const currentScreen = this.ui.getCurrentMenuScreen();
+                    if (currentScreen !== MenuScreen.MAIN) {
+                        this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
+                    }
+                } else {
+                    this.togglePause();
+                }
             }
         });
 
         // Mouse click
         this.canvas.addEventListener('click', (e) => {
             e.preventDefault();
-            this.handleFlap();
+            if (this.state === GameState.MENU) {
+                const coords = this.getCanvasCoordinates(e.clientX, e.clientY);
+                this.handleMenuClick(coords.x, coords.y);
+            } else {
+                this.handleFlap();
+            }
         });
 
         // Touch (for mobile)
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            this.handleFlap();
+            if (this.state === GameState.MENU) {
+                const touch = e.touches[0];
+                const coords = this.getCanvasCoordinates(touch.clientX, touch.clientY);
+                this.handleMenuClick(coords.x, coords.y);
+            } else {
+                this.handleFlap();
+            }
         });
     }
 

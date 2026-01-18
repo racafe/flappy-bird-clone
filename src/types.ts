@@ -18,10 +18,28 @@ export interface PipeBoundingBoxes {
 
 /** Game state enumeration */
 export enum GameState {
+    MENU = 'menu',
     READY = 'ready',
     PLAYING = 'playing',
     GAME_OVER = 'game_over',
     PAUSED = 'paused'
+}
+
+/** Menu screen types */
+export enum MenuScreen {
+    MAIN = 'main',
+    HOW_TO_PLAY = 'how_to_play',
+    ACHIEVEMENTS = 'achievements'
+}
+
+/** Button definition for menu */
+export interface MenuButton {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    label: string;
+    action: string;
 }
 
 /** Game configuration constants */

@@ -13,6 +13,56 @@ const PIPE_SPAWN_INTERVAL = 90; // Frames between pipe spawns
 const PIPE_GAP_MIN_Y = 100; // Minimum gap center Y
 const PIPE_GAP_MAX_Y = GAME_HEIGHT - GROUND_HEIGHT - 100; // Maximum gap center Y
 
+// Audio context for sound effects
+let audioContext = null;
+
+/**
+ * Initialize audio context (must be called after user interaction)
+ */
+function initAudio() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+/**
+ * Play death sound effect using Web Audio API
+ */
+function playDeathSound() {
+    if (!audioContext) return;
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.type = 'square';
+    oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.3);
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+}
+
+/**
+ * Check AABB collision between two rectangles
+ * @param {Object} a - First rectangle {x, y, width, height}
+ * @param {Object} b - Second rectangle {x, y, width, height}
+ * @returns {boolean}
+ */
+function checkCollision(a, b) {
+    return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+    );
+}
+
 // Canvas setup
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -25,6 +75,7 @@ canvas.height = GAME_HEIGHT;
 const bird = new Bird(BIRD_START_X, BIRD_START_Y);
 const pipes = [];
 let pipeSpawnTimer = 0;
+let isGameOver = false;
 
 /**
  * Resize canvas to maintain aspect ratio while fitting the viewport
@@ -58,7 +109,51 @@ function resizeCanvas() {
  * Handle bird flap input
  */
 function handleFlap() {
+    initAudio();
+    if (isGameOver) return;
     bird.flap();
+}
+
+/**
+ * Trigger game over state
+ */
+function triggerGameOver() {
+    if (isGameOver) return;
+    isGameOver = true;
+    playDeathSound();
+}
+
+/**
+ * Check for collisions between bird and all obstacles
+ * @returns {boolean} True if collision detected
+ */
+function checkCollisions() {
+    const birdBox = bird.getBoundingBox();
+
+    // Check ceiling collision
+    if (bird.y <= 0) {
+        return true;
+    }
+
+    // Check ground collision
+    if (bird.y + bird.height >= GAME_HEIGHT - GROUND_HEIGHT) {
+        return true;
+    }
+
+    // Check pipe collisions
+    for (const pipe of pipes) {
+        const pipeBoxes = pipe.getBoundingBoxes();
+
+        if (checkCollision(birdBox, pipeBoxes.top)) {
+            return true;
+        }
+
+        if (checkCollision(birdBox, pipeBoxes.bottom)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -99,6 +194,17 @@ function setupInputListeners() {
  * Update game state
  */
 function update() {
+    if (isGameOver) {
+        // Still apply gravity when dead so bird falls
+        bird.update();
+        // Clamp to ground
+        if (bird.y + bird.height > GAME_HEIGHT - GROUND_HEIGHT) {
+            bird.y = GAME_HEIGHT - GROUND_HEIGHT - bird.height;
+            bird.velocity = 0;
+        }
+        return;
+    }
+
     bird.update();
 
     // Keep bird within bounds (don't go above screen)
@@ -111,6 +217,12 @@ function update() {
     if (bird.y + bird.height > GAME_HEIGHT - GROUND_HEIGHT) {
         bird.y = GAME_HEIGHT - GROUND_HEIGHT - bird.height;
         bird.velocity = 0;
+    }
+
+    // Check for collisions
+    if (checkCollisions()) {
+        triggerGameOver();
+        return;
     }
 
     // Spawn pipes at regular intervals

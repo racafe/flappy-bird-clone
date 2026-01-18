@@ -196,14 +196,23 @@ export class UI {
     /**
      * Draw game over screen
      */
-    drawGameOver(score: number, highScore: number, isNewHighScore: boolean): void {
+    drawGameOver(
+        score: number,
+        highScore: number,
+        isNewHighScore: boolean,
+        newlyUnlockedAchievements: Array<{ name: string; description: string }> = []
+    ): void {
         this.drawOverlay();
 
+        // Calculate vertical offset based on achievements
+        const hasAchievements = newlyUnlockedAchievements.length > 0;
+        const baseY = hasAchievements ? this.config.height / 2 - 120 : this.config.height / 2 - 80;
+
         // Game Over text
-        this.drawPixelText('GAME OVER', this.config.width / 2, this.config.height / 2 - 80, 36);
+        this.drawPixelText('GAME OVER', this.config.width / 2, baseY, 36);
 
         // Final score
-        this.drawPixelText(`Score: ${score}`, this.config.width / 2, this.config.height / 2 - 20, 28);
+        this.drawPixelText(`Score: ${score}`, this.config.width / 2, baseY + 60, 28);
 
         // High score
         if (isNewHighScore) {
@@ -212,23 +221,85 @@ export class UI {
             this.ctx.lineWidth = 3;
             this.ctx.font = 'bold 20px "Courier New", monospace';
             this.ctx.textAlign = 'center';
-            this.ctx.strokeText('NEW HIGH SCORE!', this.config.width / 2, this.config.height / 2 + 20);
-            this.ctx.fillText('NEW HIGH SCORE!', this.config.width / 2, this.config.height / 2 + 20);
+            this.ctx.strokeText('NEW HIGH SCORE!', this.config.width / 2, baseY + 100);
+            this.ctx.fillText('NEW HIGH SCORE!', this.config.width / 2, baseY + 100);
         } else {
             this.ctx.font = 'bold 18px "Courier New", monospace';
             this.ctx.textAlign = 'center';
             this.ctx.fillStyle = '#CCCCCC';
             this.ctx.strokeStyle = '#000000';
             this.ctx.lineWidth = 2;
-            this.ctx.strokeText(`Best: ${highScore}`, this.config.width / 2, this.config.height / 2 + 20);
-            this.ctx.fillText(`Best: ${highScore}`, this.config.width / 2, this.config.height / 2 + 20);
+            this.ctx.strokeText(`Best: ${highScore}`, this.config.width / 2, baseY + 100);
+            this.ctx.fillText(`Best: ${highScore}`, this.config.width / 2, baseY + 100);
         }
 
-        // Restart instruction
-        this.ctx.font = 'bold 16px "Courier New", monospace';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.fillText('Press SPACE to restart', this.config.width / 2, this.config.height / 2 + 70);
+        // Display newly unlocked achievements
+        if (hasAchievements) {
+            const achievementY = baseY + 135;
+
+            // Section header
+            this.ctx.font = 'bold 14px "Courier New", monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillStyle = '#FFD700';
+            this.ctx.strokeStyle = '#000000';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeText('Achievements Unlocked!', this.config.width / 2, achievementY);
+            this.ctx.fillText('Achievements Unlocked!', this.config.width / 2, achievementY);
+
+            // List achievements (max 3 displayed)
+            const displayedAchievements = newlyUnlockedAchievements.slice(0, 3);
+            displayedAchievements.forEach((achievement, index) => {
+                const y = achievementY + 20 + index * 18;
+                this.ctx.font = 'bold 12px "Courier New", monospace';
+                this.ctx.fillStyle = '#00FF00';
+                this.ctx.strokeStyle = '#000000';
+                this.ctx.lineWidth = 1;
+                this.ctx.strokeText(`★ ${achievement.name}`, this.config.width / 2, y);
+                this.ctx.fillText(`★ ${achievement.name}`, this.config.width / 2, y);
+            });
+
+            // Show "+X more" if there are more achievements
+            if (newlyUnlockedAchievements.length > 3) {
+                const moreY = achievementY + 20 + 3 * 18;
+                this.ctx.font = '10px "Courier New", monospace';
+                this.ctx.fillStyle = '#888888';
+                this.ctx.fillText(
+                    `+${newlyUnlockedAchievements.length - 3} more`,
+                    this.config.width / 2,
+                    moreY
+                );
+            }
+        }
+
+        // Game over buttons
+        this.menuButtons = [];
+        const buttonWidth = 150;
+        const buttonHeight = 40;
+        const buttonX = (this.config.width - buttonWidth) / 2;
+        const buttonsY = hasAchievements ? this.config.height - 130 : this.config.height / 2 + 60;
+        const buttonGap = 50;
+
+        const playAgainButton: MenuButton = {
+            x: buttonX,
+            y: buttonsY,
+            width: buttonWidth,
+            height: buttonHeight,
+            label: 'Play Again',
+            action: 'playagain'
+        };
+        this.menuButtons.push(playAgainButton);
+        this.drawButton(playAgainButton);
+
+        const mainMenuButton: MenuButton = {
+            x: buttonX,
+            y: buttonsY + buttonGap,
+            width: buttonWidth,
+            height: buttonHeight,
+            label: 'Main Menu',
+            action: 'mainmenu'
+        };
+        this.menuButtons.push(mainMenuButton);
+        this.drawButton(mainMenuButton);
     }
 
     /**
@@ -613,7 +684,8 @@ export class UI {
         pipes: Pipe[],
         score: number,
         highScore: number,
-        isNewHighScore: boolean = false
+        isNewHighScore: boolean = false,
+        newlyUnlockedAchievements: Array<{ name: string; description: string }> = []
     ): void {
         if (state === GameState.MENU) {
             this.drawMenu(this.currentMenuScreen);
@@ -629,7 +701,7 @@ export class UI {
         if (state === GameState.READY) {
             this.drawStartScreen();
         } else if (state === GameState.GAME_OVER) {
-            this.drawGameOver(score, highScore, isNewHighScore);
+            this.drawGameOver(score, highScore, isNewHighScore, newlyUnlockedAchievements);
         } else if (state === GameState.PAUSED) {
             this.drawPauseScreen();
         }

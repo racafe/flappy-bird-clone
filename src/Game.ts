@@ -41,6 +41,7 @@ export class Game {
 
     private pendingAchievement: Achievement | null = null;
     private achievementDisplayTimer: number = 0;
+    private gameOverAchievements: Achievement[] = [];
 
     private animationFrameId: number | null = null;
 
@@ -199,7 +200,8 @@ export class Game {
             this.pipes,
             this.score,
             this.highScore,
-            this.isNewHighScore
+            this.isNewHighScore,
+            this.gameOverAchievements
         );
 
         // Draw achievement notification if present
@@ -225,16 +227,57 @@ export class Game {
             return;
         }
 
-        if (this.state === GameState.GAME_OVER) {
-            this.reset();
-            return;
-        }
-
         if (this.state === GameState.PLAYING) {
             this.bird.flap();
             this.flapsCount++;
             audio.playFlap();
         }
+    }
+
+    /**
+     * Handle game over button click
+     */
+    private handleGameOverClick(x: number, y: number): boolean {
+        const buttons = this.ui.getMenuButtons();
+
+        for (const button of buttons) {
+            if (
+                x >= button.x &&
+                x <= button.x + button.width &&
+                y >= button.y &&
+                y <= button.y + button.height
+            ) {
+                audio.init();
+                audio.playClick();
+
+                switch (button.action) {
+                    case 'playagain':
+                        this.restartGame();
+                        break;
+                    case 'mainmenu':
+                        this.reset();
+                        break;
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Restart game directly (Play Again)
+     */
+    private restartGame(): void {
+        this.bird.reset(this.config.birdStartX, this.config.birdStartY);
+        this.pipes = [];
+        this.pipeSpawnTimer = 0;
+        this.state = GameState.READY;
+        this.score = 0;
+        this.isNewHighScore = false;
+        this.flapsCount = 0;
+        this.gameOverAchievements = [];
+        // Reload high score in case it changed
+        this.highScore = storage.getHighScore();
     }
 
     /**
@@ -310,6 +353,7 @@ export class Game {
         this.score = 0;
         this.isNewHighScore = false;
         this.flapsCount = 0;
+        this.gameOverAchievements = [];
         // Reload high score in case it changed
         this.highScore = storage.getHighScore();
     }
@@ -330,8 +374,9 @@ export class Game {
             this.isNewHighScore = true;
         }
 
-        // Check achievements
-        this.checkAchievements();
+        // Check achievements and capture newly unlocked ones
+        const stats = this.getStats();
+        this.gameOverAchievements = achievements.checkAchievements(stats);
     }
 
     /**
@@ -495,9 +540,12 @@ export class Game {
         // Mouse click
         this.canvas.addEventListener('click', (e) => {
             e.preventDefault();
+            const coords = this.getCanvasCoordinates(e.clientX, e.clientY);
+
             if (this.state === GameState.MENU) {
-                const coords = this.getCanvasCoordinates(e.clientX, e.clientY);
                 this.handleMenuClick(coords.x, coords.y);
+            } else if (this.state === GameState.GAME_OVER) {
+                this.handleGameOverClick(coords.x, coords.y);
             } else {
                 this.handleFlap();
             }
@@ -506,10 +554,13 @@ export class Game {
         // Touch (for mobile)
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            const touch = e.touches[0];
+            const coords = this.getCanvasCoordinates(touch.clientX, touch.clientY);
+
             if (this.state === GameState.MENU) {
-                const touch = e.touches[0];
-                const coords = this.getCanvasCoordinates(touch.clientX, touch.clientY);
                 this.handleMenuClick(coords.x, coords.y);
+            } else if (this.state === GameState.GAME_OVER) {
+                this.handleGameOverClick(coords.x, coords.y);
             } else {
                 this.handleFlap();
             }

@@ -3,7 +3,7 @@
  * Handles persistent game data using localStorage
  */
 
-import { StoredGameData } from './types.js';
+import { StoredGameData, AchievementUnlockData } from './types.js';
 
 const STORAGE_KEY = 'flappy_bird_save';
 
@@ -13,6 +13,7 @@ const DEFAULT_DATA: StoredGameData = {
     totalGames: 0,
     totalScore: 0,
     achievements: [],
+    achievementDates: [],
     selectedSkin: 'default',
     soundEnabled: true,
     musicEnabled: true
@@ -111,10 +112,30 @@ export class Storage {
     unlockAchievement(id: string): boolean {
         if (!this.data.achievements.includes(id)) {
             this.data.achievements.push(id);
+            this.data.achievementDates.push({
+                id,
+                unlockedAt: new Date().toISOString()
+            });
             this.save();
             return true;
         }
         return false;
+    }
+
+    /**
+     * Get achievement unlock date
+     * @returns ISO date string or undefined if not unlocked
+     */
+    getAchievementUnlockDate(id: string): string | undefined {
+        const unlockData = this.data.achievementDates.find(a => a.id === id);
+        return unlockData?.unlockedAt;
+    }
+
+    /**
+     * Get all achievement unlock dates
+     */
+    getAchievementDates(): AchievementUnlockData[] {
+        return [...this.data.achievementDates];
     }
 
     /**

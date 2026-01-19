@@ -74,12 +74,19 @@ export interface PipeConfig {
     readonly speed: number;
 }
 
+/** Achievement unlock data with timestamp */
+export interface AchievementUnlockData {
+    id: string;
+    unlockedAt: string; // ISO date string
+}
+
 /** Stored game data for persistence */
 export interface StoredGameData {
     highScore: number;
     totalGames: number;
     totalScore: number;
     achievements: string[];
+    achievementDates: AchievementUnlockData[];
     selectedSkin: string;
     soundEnabled: boolean;
     musicEnabled: boolean;
@@ -92,6 +99,7 @@ export interface Achievement {
     description: string;
     condition: (stats: GameStats) => boolean;
     icon?: string;
+    skinReward?: string; // Bird skin unlocked by this achievement
 }
 
 /** Current game statistics */

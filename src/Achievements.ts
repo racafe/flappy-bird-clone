@@ -23,25 +23,29 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'warming_up',
         name: 'Warming Up',
         description: 'Reach 25 points in a single game',
-        condition: (stats) => stats.currentScore >= 25
+        condition: (stats) => stats.currentScore >= 25,
+        skinReward: 'Blue Bird'
     },
     {
         id: 'night_owl',
         name: 'Night Owl',
         description: 'Reach 50 points (reach night)',
-        condition: (stats) => stats.currentScore >= 50
+        condition: (stats) => stats.currentScore >= 50,
+        skinReward: 'Night Bird'
     },
     {
         id: 'century_club',
         name: 'Century Club',
         description: 'Reach 100 points in a single game',
-        condition: (stats) => stats.currentScore >= 100
+        condition: (stats) => stats.currentScore >= 100,
+        skinReward: 'Golden Bird'
     },
     {
         id: 'flappy_master',
         name: 'Flappy Master',
         description: 'Reach 200 points in a single game',
-        condition: (stats) => stats.currentScore >= 200
+        condition: (stats) => stats.currentScore >= 200,
+        skinReward: 'Rainbow Bird'
     },
     // Play count achievements
     {
@@ -54,19 +58,22 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'dedicated',
         name: 'Dedicated',
         description: 'Play 10 games',
-        condition: (stats) => stats.totalGames >= 10
+        condition: (stats) => stats.totalGames >= 10,
+        skinReward: 'Red Bird'
     },
     {
         id: 'persistent',
         name: 'Persistent',
         description: 'Play 50 games',
-        condition: (stats) => stats.totalGames >= 50
+        condition: (stats) => stats.totalGames >= 50,
+        skinReward: 'Purple Bird'
     },
     {
         id: 'addicted',
         name: 'Addicted',
         description: 'Play 100 games',
-        condition: (stats) => stats.totalGames >= 100
+        condition: (stats) => stats.totalGames >= 100,
+        skinReward: 'Cyber Bird'
     },
     // Total score achievements
     {
@@ -79,13 +86,15 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'collector',
         name: 'Collector',
         description: 'Accumulate 500 total points',
-        condition: (stats) => stats.totalScore >= 500
+        condition: (stats) => stats.totalScore >= 500,
+        skinReward: 'Silver Bird'
     },
     {
         id: 'hoarder',
         name: 'Hoarder',
         description: 'Accumulate 1000 total points',
-        condition: (stats) => stats.totalScore >= 1000
+        condition: (stats) => stats.totalScore >= 1000,
+        skinReward: 'Diamond Bird'
     }
 ];
 
@@ -118,12 +127,13 @@ export class Achievements {
     }
 
     /**
-     * Get all achievements with their unlock status
+     * Get all achievements with their unlock status and dates
      */
-    getAllAchievements(): Array<Achievement & { unlocked: boolean }> {
+    getAllAchievements(): Array<Achievement & { unlocked: boolean; unlockedAt?: string }> {
         return ACHIEVEMENTS.map(achievement => ({
             ...achievement,
-            unlocked: this.unlockedIds.has(achievement.id)
+            unlocked: this.unlockedIds.has(achievement.id),
+            unlockedAt: storage.getAchievementUnlockDate(achievement.id)
         }));
     }
 

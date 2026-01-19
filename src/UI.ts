@@ -113,6 +113,9 @@ export class UI {
     private clouds: ParallaxElement[] = [];
     private stars: ParallaxElement[] = [];
 
+    // Achievements screen scroll state
+    private achievementsScrollOffset: number = 0;
+
     constructor(ctx: RenderContext, config: GameConfig) {
         this.ctx = ctx;
         this.config = config;
@@ -1061,16 +1064,33 @@ export class UI {
         this.ctx.strokeText(progressText, this.config.width / 2, 75);
         this.ctx.fillText(progressText, this.config.width / 2, 75);
 
-        // Achievement list
+        // Achievement list with scrolling
         const allAchievements = achievements.getAllAchievements();
-        const itemHeight = 42;
-        const startY = 100;
-        const maxVisible = 10;
+        const itemHeight = 55;
+        const startY = 95;
+        const visibleHeight = this.config.height - 180; // Space for title and buttons
+        const maxVisible = Math.floor(visibleHeight / itemHeight);
+        const maxScroll = Math.max(0, allAchievements.length - maxVisible);
 
-        allAchievements.slice(0, maxVisible).forEach((achievement, index) => {
-            const y = startY + index * itemHeight;
-            const boxX = 30;
-            const boxWidth = this.config.width - 60;
+        // Clamp scroll offset
+        this.achievementsScrollOffset = Math.max(0, Math.min(this.achievementsScrollOffset, maxScroll));
+
+        // Create clipping region for achievement list
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(0, startY, this.config.width, visibleHeight);
+        this.ctx.clip();
+
+        allAchievements.forEach((achievement, index) => {
+            const y = startY + (index - this.achievementsScrollOffset) * itemHeight;
+
+            // Skip if outside visible area
+            if (y < startY - itemHeight || y > startY + visibleHeight) {
+                return;
+            }
+
+            const boxX = 20;
+            const boxWidth = this.config.width - 40;
 
             // Background
             this.ctx.fillStyle = achievement.unlocked ? 'rgba(0, 100, 0, 0.6)' : 'rgba(0, 0, 0, 0.5)';
@@ -1082,47 +1102,129 @@ export class UI {
             this.ctx.strokeRect(boxX, y, boxWidth, itemHeight - 4);
 
             // Achievement name
-            this.ctx.font = 'bold 12px "Courier New", monospace';
+            this.ctx.font = 'bold 11px "Courier New", monospace';
             this.ctx.textAlign = 'left';
             this.ctx.fillStyle = achievement.unlocked ? '#00FF00' : '#888888';
-            this.ctx.fillText(achievement.name, boxX + 10, y + 15);
+            this.ctx.fillText(achievement.name, boxX + 8, y + 14);
 
-            // Achievement description
-            this.ctx.font = '10px "Courier New", monospace';
-            this.ctx.fillStyle = achievement.unlocked ? '#CCFFCC' : '#666666';
-            this.ctx.fillText(achievement.description, boxX + 10, y + 30);
+            // Achievement description/requirement
+            this.ctx.font = '9px "Courier New", monospace';
+            this.ctx.fillStyle = achievement.unlocked ? '#CCFFCC' : '#AAAAAA';
+            const descText = achievement.unlocked ? achievement.description : `Requires: ${achievement.description}`;
+            this.ctx.fillText(descText, boxX + 8, y + 27);
+
+            // Third line: unlock date OR skin reward info
+            this.ctx.font = '8px "Courier New", monospace';
+            if (achievement.unlocked && achievement.unlockedAt) {
+                // Show completion date for unlocked achievements
+                const date = new Date(achievement.unlockedAt);
+                const dateStr = date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+                this.ctx.fillStyle = '#88FF88';
+                this.ctx.fillText(`Unlocked: ${dateStr}`, boxX + 8, y + 40);
+            } else if (!achievement.unlocked && achievement.skinReward) {
+                // Show skin reward for locked achievements
+                this.ctx.fillStyle = '#FFD700';
+                this.ctx.fillText(`Unlocks: ${achievement.skinReward}`, boxX + 8, y + 40);
+            } else if (achievement.unlocked && achievement.skinReward) {
+                // Show earned skin for unlocked achievements with skin
+                this.ctx.fillStyle = '#FFD700';
+                const date = achievement.unlockedAt ? new Date(achievement.unlockedAt) : null;
+                const dateStr = date ? date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                }) : '';
+                this.ctx.fillText(`${dateStr} | Skin: ${achievement.skinReward}`, boxX + 8, y + 40);
+            }
 
             // Checkmark or lock icon
-            this.ctx.font = 'bold 14px "Courier New", monospace';
+            this.ctx.font = 'bold 16px "Courier New", monospace';
             this.ctx.textAlign = 'right';
             this.ctx.fillStyle = achievement.unlocked ? '#00FF00' : '#666666';
-            this.ctx.fillText(achievement.unlocked ? '✓' : '○', boxX + boxWidth - 10, y + 22);
+            this.ctx.fillText(achievement.unlocked ? '✓' : '🔒', boxX + boxWidth - 10, y + 28);
         });
 
-        // Show "more achievements" message if there are more
-        if (allAchievements.length > maxVisible) {
-            this.ctx.font = 'bold 10px "Courier New", monospace';
+        this.ctx.restore();
+
+        // Scroll indicators
+        if (this.achievementsScrollOffset > 0) {
+            this.ctx.font = 'bold 12px "Courier New", monospace';
             this.ctx.textAlign = 'center';
-            this.ctx.fillStyle = '#888888';
-            this.ctx.fillText(
-                `+ ${allAchievements.length - maxVisible} more`,
-                this.config.width / 2,
-                startY + maxVisible * itemHeight + 5
-            );
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.fillText('▲ Scroll Up', this.config.width / 2, startY - 5);
+        }
+        if (this.achievementsScrollOffset < maxScroll) {
+            this.ctx.font = 'bold 12px "Courier New", monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.fillText('▼ Scroll Down', this.config.width / 2, startY + visibleHeight + 12);
+        }
+
+        // Navigation buttons
+        this.menuButtons = [];
+
+        // Scroll up button
+        if (allAchievements.length > maxVisible) {
+            const scrollUpButton: MenuButton = {
+                x: 20,
+                y: this.config.height - 80,
+                width: 80,
+                height: 35,
+                label: '▲ Up',
+                action: 'scroll_up'
+            };
+            this.menuButtons.push(scrollUpButton);
+            this.drawButton(scrollUpButton);
+
+            const scrollDownButton: MenuButton = {
+                x: this.config.width - 100,
+                y: this.config.height - 80,
+                width: 80,
+                height: 35,
+                label: '▼ Down',
+                action: 'scroll_down'
+            };
+            this.menuButtons.push(scrollDownButton);
+            this.drawButton(scrollDownButton);
         }
 
         // Back button
-        this.menuButtons = [];
         const backButton: MenuButton = {
-            x: (this.config.width - 150) / 2,
+            x: (this.config.width - 100) / 2,
             y: this.config.height - 80,
-            width: 150,
-            height: 40,
+            width: 100,
+            height: 35,
             label: 'Back',
             action: 'back'
         };
         this.menuButtons.push(backButton);
         this.drawButton(backButton);
+    }
+
+    /**
+     * Scroll achievements list
+     */
+    scrollAchievements(direction: 'up' | 'down'): void {
+        if (direction === 'up') {
+            this.achievementsScrollOffset = Math.max(0, this.achievementsScrollOffset - 1);
+        } else {
+            const allAchievements = achievements.getAllAchievements();
+            const visibleHeight = this.config.height - 180;
+            const itemHeight = 55;
+            const maxVisible = Math.floor(visibleHeight / itemHeight);
+            const maxScroll = Math.max(0, allAchievements.length - maxVisible);
+            this.achievementsScrollOffset = Math.min(maxScroll, this.achievementsScrollOffset + 1);
+        }
+    }
+
+    /**
+     * Reset achievements scroll position
+     */
+    resetAchievementsScroll(): void {
+        this.achievementsScrollOffset = 0;
     }
 
     /**

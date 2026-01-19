@@ -329,7 +329,14 @@ export class Game {
                         break;
                     case 'back':
                     case 'gotit':
+                        this.ui.resetAchievementsScroll();
                         this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
+                        break;
+                    case 'scroll_up':
+                        this.ui.scrollAchievements('up');
+                        break;
+                    case 'scroll_down':
+                        this.ui.scrollAchievements('down');
                         break;
                     case 'togglemusic':
                         this.toggleMusic();

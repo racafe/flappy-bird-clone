@@ -1,2 +1,21 @@
+# Node modules (if using Node.js projects)
 node_modules/
+
+# Temporary files
+*.tmp
+.temp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build files
 dist/
+
+# IDE files
+.vscode/
+.idea/
+.cursor/
+
+# Ralph files
+.ralph-tui/

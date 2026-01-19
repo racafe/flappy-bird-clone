@@ -53,6 +53,7 @@ export class Game {
 
     private animationFrameId: number | null = null;
     private currentSessionLeaderboardId: string | null = null;
+    private menuSelectionIndex: number | null = null;
 
     constructor(canvasId: string, config: Partial<GameConfig> = {}) {
         this.config = { ...DEFAULT_CONFIG, ...config };
@@ -323,6 +324,7 @@ export class Game {
                     case 'start':
                         this.state = GameState.READY;
                         this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
+                        this.clearMenuSelection();
                         // Start music on first user interaction if enabled
                         if (!audio.isMusicPlaying() && audio.isMusicEnabled()) {
                             audio.startMusic();
@@ -330,23 +332,29 @@ export class Game {
                         break;
                     case 'tutorial':
                         this.ui.setCurrentMenuScreen(MenuScreen.TUTORIAL);
+                        this.resetMenuSelection();
                         break;
                     case 'howtoplay':
                         this.ui.setCurrentMenuScreen(MenuScreen.HOW_TO_PLAY);
+                        this.resetMenuSelection();
                         break;
                     case 'achievements':
                         this.ui.setCurrentMenuScreen(MenuScreen.ACHIEVEMENTS);
+                        this.resetMenuSelection();
                         break;
                     case 'skins':
                         this.ui.setCurrentMenuScreen(MenuScreen.SKINS);
+                        this.resetMenuSelection();
                         break;
                     case 'leaderboard':
                         this.ui.setCurrentMenuScreen(MenuScreen.LEADERBOARD);
+                        this.resetMenuSelection();
                         break;
                     case 'back':
                     case 'gotit':
                         this.ui.resetAchievementsScroll();
                         this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
+                        this.resetMenuSelection();
                         break;
                     case 'scroll_up':
                         this.ui.scrollAchievements('up');
@@ -421,6 +429,7 @@ export class Game {
                 switch (button.action) {
                     case 'resume':
                         this.state = GameState.PLAYING;
+                        this.clearMenuSelection();
                         break;
                     case 'quit':
                         this.reset();
@@ -452,6 +461,7 @@ export class Game {
         // they can still see their most recent score highlighted
         // Reload high score in case it changed
         this.highScore = storage.getHighScore();
+        this.resetMenuSelection();
     }
 
     /**
@@ -477,6 +487,7 @@ export class Game {
         // Check achievements and capture newly unlocked ones
         const stats = this.getStats();
         this.gameOverAchievements = achievements.checkAchievements(stats);
+        this.resetMenuSelection();
     }
 
     /**
@@ -624,6 +635,69 @@ export class Game {
     }
 
     /**
+     * Move keyboard selection across current menu buttons
+     */
+    private moveMenuSelection(delta: number): void {
+        const buttons = this.ui.getMenuButtons();
+        if (buttons.length === 0) {
+            this.menuSelectionIndex = null;
+            this.ui.setSelectedMenuIndex(null);
+            return;
+        }
+
+        if (this.menuSelectionIndex === null) {
+            this.menuSelectionIndex = 0;
+        } else {
+            const count = buttons.length;
+            this.menuSelectionIndex = (this.menuSelectionIndex + delta + count) % count;
+        }
+
+        this.ui.setSelectedMenuIndex(this.menuSelectionIndex);
+    }
+
+    /**
+     * Ensure there is a valid selection when showing a menu-like screen
+     */
+    private resetMenuSelection(): void {
+        const buttons = this.ui.getMenuButtons();
+        if (buttons.length > 0) {
+            this.menuSelectionIndex = 0;
+        } else {
+            this.menuSelectionIndex = null;
+        }
+        this.ui.setSelectedMenuIndex(this.menuSelectionIndex);
+    }
+
+    /**
+     * Clear selection (e.g., when returning to gameplay)
+     */
+    private clearMenuSelection(): void {
+        this.menuSelectionIndex = null;
+        this.ui.setSelectedMenuIndex(null);
+    }
+
+    /**
+     * Activate the currently selected menu button based on game state
+     */
+    private activateSelectedMenuButton(): void {
+        const buttons = this.ui.getMenuButtons();
+        if (this.menuSelectionIndex === null || buttons.length === 0) return;
+
+        const index = Math.max(0, Math.min(this.menuSelectionIndex, buttons.length - 1));
+        const button = buttons[index];
+        const centerX = button.x + button.width / 2;
+        const centerY = button.y + button.height / 2;
+
+        if (this.state === GameState.MENU) {
+            this.handleMenuClick(centerX, centerY);
+        } else if (this.state === GameState.GAME_OVER) {
+            this.handleGameOverClick(centerX, centerY);
+        } else if (this.state === GameState.PAUSED) {
+            this.handlePauseClick(centerX, centerY);
+        }
+    }
+
+    /**
      * Set up input event listeners
      */
     private setupInputListeners(): void {
@@ -641,9 +715,42 @@ export class Game {
                     const currentScreen = this.ui.getCurrentMenuScreen();
                     if (currentScreen !== MenuScreen.MAIN) {
                         this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
+                        this.resetMenuSelection();
                     }
                 } else {
                     this.togglePause();
+                    if (this.state === GameState.PAUSED) {
+                        this.resetMenuSelection();
+                    } else {
+                        this.clearMenuSelection();
+                    }
+                }
+            } else if (
+                e.code === 'ArrowUp' ||
+                e.code === 'KeyW' ||
+                e.code === 'ArrowDown' ||
+                e.code === 'KeyS'
+            ) {
+                if (
+                    this.state === GameState.MENU ||
+                    this.state === GameState.GAME_OVER ||
+                    this.state === GameState.PAUSED
+                ) {
+                    e.preventDefault();
+                    const delta =
+                        e.code === 'ArrowUp' || e.code === 'KeyW'
+                            ? -1
+                            : 1;
+                    this.moveMenuSelection(delta);
+                }
+            } else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+                if (
+                    this.state === GameState.MENU ||
+                    this.state === GameState.GAME_OVER ||
+                    this.state === GameState.PAUSED
+                ) {
+                    e.preventDefault();
+                    this.activateSelectedMenuButton();
                 }
             }
         });

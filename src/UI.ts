@@ -105,6 +105,7 @@ export class UI {
     private config: GameConfig;
     private menuButtons: MenuButton[] = [];
     private currentMenuScreen: MenuScreen = MenuScreen.MAIN;
+    private selectedMenuIndex: number | null = null;
     private menuBirdSprite: HTMLCanvasElement | null = null;
     private menuBirdFrame: number = 0;
     private menuBirdTimer: number = 0;
@@ -818,7 +819,8 @@ export class UI {
             { label: 'Achievements', action: 'achievements' }
         ];
 
-        buttons.forEach((btn, index) => {
+        buttons.forEach((btn) => {
+            const index = this.menuButtons.length;
             const button: MenuButton = {
                 x: buttonX,
                 y: startY + index * buttonGap,
@@ -828,7 +830,7 @@ export class UI {
                 action: btn.action
             };
             this.menuButtons.push(button);
-            this.drawButton(button);
+            this.drawButton(button, this.selectedMenuIndex === index);
         });
 
         // Draw music toggle button
@@ -881,6 +883,7 @@ export class UI {
 
         // Back button
         this.menuButtons = [];
+        const backIndex = this.menuButtons.length;
         const backButton: MenuButton = {
             x: (this.config.width - 150) / 2,
             y: this.config.height - 120,
@@ -890,7 +893,7 @@ export class UI {
             action: 'back'
         };
         this.menuButtons.push(backButton);
-        this.drawButton(backButton);
+        this.drawButton(backButton, this.selectedMenuIndex === backIndex);
     }
 
     /**
@@ -1146,6 +1149,7 @@ export class UI {
 
         // Scroll up button
         if (allAchievements.length > maxVisible) {
+            const scrollUpIndex = this.menuButtons.length;
             const scrollUpButton: MenuButton = {
                 x: 20,
                 y: this.config.height - 80,
@@ -1155,8 +1159,9 @@ export class UI {
                 action: 'scroll_up'
             };
             this.menuButtons.push(scrollUpButton);
-            this.drawButton(scrollUpButton);
+            this.drawButton(scrollUpButton, this.selectedMenuIndex === scrollUpIndex);
 
+            const scrollDownIndex = this.menuButtons.length;
             const scrollDownButton: MenuButton = {
                 x: this.config.width - 100,
                 y: this.config.height - 80,
@@ -1166,10 +1171,11 @@ export class UI {
                 action: 'scroll_down'
             };
             this.menuButtons.push(scrollDownButton);
-            this.drawButton(scrollDownButton);
+            this.drawButton(scrollDownButton, this.selectedMenuIndex === scrollDownIndex);
         }
 
         // Back button
+        const backIndex = this.menuButtons.length;
         const backButton: MenuButton = {
             x: (this.config.width - 100) / 2,
             y: this.config.height - 80,
@@ -1179,7 +1185,7 @@ export class UI {
             action: 'back'
         };
         this.menuButtons.push(backButton);
-        this.drawButton(backButton);
+        this.drawButton(backButton, this.selectedMenuIndex === backIndex);
     }
 
     /**
@@ -1334,6 +1340,7 @@ export class UI {
 
         // Back button
         this.menuButtons = [];
+        const backIndex = this.menuButtons.length;
         const backButton: MenuButton = {
             x: (this.config.width - 120) / 2,
             y: this.config.height - 75,
@@ -1343,7 +1350,7 @@ export class UI {
             action: 'back'
         };
         this.menuButtons.push(backButton);
-        this.drawButton(backButton);
+        this.drawButton(backButton, this.selectedMenuIndex === backIndex);
     }
 
     /**
@@ -1442,6 +1449,7 @@ export class UI {
 
             // Add button for unlocked skins
             if (isUnlocked && !isSelected) {
+                const skinIndex = this.menuButtons.length;
                 const skinButton: MenuButton = {
                     x,
                     y,
@@ -1451,10 +1459,12 @@ export class UI {
                     action: `select_skin_${skinId}`
                 };
                 this.menuButtons.push(skinButton);
+                this.drawButton(skinButton, this.selectedMenuIndex === skinIndex);
             }
         });
 
         // Back button
+        const backIndex = this.menuButtons.length;
         const backButton: MenuButton = {
             x: (this.config.width - 120) / 2,
             y: this.config.height - 75,
@@ -1464,7 +1474,7 @@ export class UI {
             action: 'back'
         };
         this.menuButtons.push(backButton);
-        this.drawButton(backButton);
+        this.drawButton(backButton, this.selectedMenuIndex === backIndex);
     }
 
     /**
@@ -1523,6 +1533,20 @@ export class UI {
      */
     getMenuButtons(): MenuButton[] {
         return this.menuButtons;
+    }
+
+    /**
+     * Set which menu button is currently selected for keyboard navigation
+     */
+    setSelectedMenuIndex(index: number | null): void {
+        this.selectedMenuIndex = index;
+    }
+
+    /**
+     * Get the currently selected menu button index (if any)
+     */
+    getSelectedMenuIndex(): number | null {
+        return this.selectedMenuIndex;
     }
 
     /**

@@ -333,6 +333,40 @@ export class Bird {
     }
 
     /**
+     * Update only animation (no physics) - used during READY state
+     */
+    updateAnimation(): void {
+        // Update animation
+        this.animationTimer++;
+        if (this.isFlapping) {
+            this.flapAnimationTimer++;
+            if (this.flapAnimationTimer < 4) {
+                this.currentFrame = 0;
+            } else if (this.flapAnimationTimer < 8) {
+                this.currentFrame = 1;
+            } else if (this.flapAnimationTimer < 12) {
+                this.currentFrame = 2;
+            } else {
+                this.isFlapping = false;
+                this.currentFrame = 1;
+            }
+        } else {
+            if (this.animationTimer % this.animationSpeed === 0) {
+                this.currentFrame = (this.currentFrame + 1) % 3;
+            }
+        }
+
+        // Update rainbow animation (color cycling)
+        if (this.currentSkinId === 'rainbow') {
+            this.rainbowTimer++;
+            if (this.rainbowTimer % 15 === 0) {
+                this.rainbowFrame = (this.rainbowFrame + 1) % RAINBOW_COLORS.length;
+                this.sprites = createBirdSprites('rainbow', this.rainbowFrame);
+            }
+        }
+    }
+
+    /**
      * Draw the bird on the canvas
      */
     draw(ctx: RenderContext): void {

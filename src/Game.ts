@@ -147,8 +147,8 @@ export class Game {
         }
 
         if (this.state === GameState.READY) {
-            // Idle bird animation only
-            this.bird.update();
+            // Idle bird animation only (no physics - bird should stay stationary)
+            this.bird.updateAnimation();
             return;
         }
 
@@ -322,6 +322,12 @@ export class Game {
 
                 switch (button.action) {
                     case 'start':
+                        // Reset bird and game state for new game
+                        this.bird.reset(this.config.birdStartX, this.config.birdStartY);
+                        this.pipes = [];
+                        this.pipeSpawnTimer = 0;
+                        this.score = 0;
+                        this.flapsCount = 0;
                         this.state = GameState.READY;
                         this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
                         this.clearMenuSelection();

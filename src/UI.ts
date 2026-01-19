@@ -120,6 +120,9 @@ export class UI {
     private skinRainbowTimer: number = 0;
     private skinRainbowFrame: number = 0;
 
+    // Leaderboard state
+    private currentSessionLeaderboardId: string | null = null;
+
     constructor(ctx: RenderContext, config: GameConfig) {
         this.ctx = ctx;
         this.config = config;
@@ -808,6 +811,7 @@ export class UI {
 
         const buttons: Array<{ label: string; action: string }> = [
             { label: 'Start Game', action: 'start' },
+            { label: 'Leaderboard', action: 'leaderboard' },
             { label: 'Bird Skins', action: 'skins' },
             { label: 'Tutorial', action: 'tutorial' },
             { label: 'How to Play', action: 'howtoplay' },
@@ -1202,6 +1206,147 @@ export class UI {
     }
 
     /**
+     * Set the current session's leaderboard entry ID for highlighting
+     */
+    setCurrentSessionLeaderboardId(id: string | null): void {
+        this.currentSessionLeaderboardId = id;
+    }
+
+    /**
+     * Get the current session's leaderboard entry ID
+     */
+    getCurrentSessionLeaderboardId(): string | null {
+        return this.currentSessionLeaderboardId;
+    }
+
+    /**
+     * Draw the Leaderboard screen
+     */
+    drawLeaderboardScreen(): void {
+        this.clearCanvas();
+        this.drawGround();
+        this.drawOverlay();
+
+        // Title
+        this.drawPixelText('LEADERBOARD', this.config.width / 2, 40, 28);
+
+        // Get leaderboard entries
+        const leaderboard = storage.getLeaderboard();
+
+        if (leaderboard.length === 0) {
+            // No entries message
+            this.ctx.font = 'bold 16px "Courier New", monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillStyle = '#AAAAAA';
+            this.ctx.strokeStyle = '#000000';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeText('No scores yet!', this.config.width / 2, 200);
+            this.ctx.fillText('No scores yet!', this.config.width / 2, 200);
+            this.ctx.font = '14px "Courier New", monospace';
+            this.ctx.strokeText('Play to add your scores', this.config.width / 2, 230);
+            this.ctx.fillText('Play to add your scores', this.config.width / 2, 230);
+        } else {
+            // Draw column headers
+            const startY = 85;
+            const headerY = startY - 5;
+
+            this.ctx.font = 'bold 12px "Courier New", monospace';
+            this.ctx.textAlign = 'left';
+            this.ctx.fillStyle = '#FFD700';
+            this.ctx.strokeStyle = '#000000';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeText('RANK', 30, headerY);
+            this.ctx.fillText('RANK', 30, headerY);
+            this.ctx.strokeText('SCORE', 100, headerY);
+            this.ctx.fillText('SCORE', 100, headerY);
+            this.ctx.textAlign = 'right';
+            this.ctx.strokeText('DATE', this.config.width - 30, headerY);
+            this.ctx.fillText('DATE', this.config.width - 30, headerY);
+
+            // Draw entries
+            const itemHeight = 40;
+
+            leaderboard.forEach((entry, index) => {
+                const y = startY + 20 + index * itemHeight;
+                const isCurrentSession = entry.id === this.currentSessionLeaderboardId;
+                const rank = index + 1;
+
+                // Background highlight for current session
+                if (isCurrentSession) {
+                    this.ctx.fillStyle = 'rgba(0, 150, 0, 0.4)';
+                    this.ctx.fillRect(20, y - 12, this.config.width - 40, itemHeight - 4);
+                    this.ctx.strokeStyle = '#00FF00';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(20, y - 12, this.config.width - 40, itemHeight - 4);
+                }
+
+                // Rank styling
+                let rankColor = '#FFFFFF';
+                let rankPrefix = '';
+                if (rank === 1) {
+                    rankColor = '#FFD700'; // Gold
+                    rankPrefix = '';
+                } else if (rank === 2) {
+                    rankColor = '#C0C0C0'; // Silver
+                } else if (rank === 3) {
+                    rankColor = '#CD7F32'; // Bronze
+                }
+
+                // Draw rank
+                this.ctx.font = 'bold 16px "Courier New", monospace';
+                this.ctx.textAlign = 'left';
+                this.ctx.fillStyle = rankColor;
+                this.ctx.strokeStyle = '#000000';
+                this.ctx.lineWidth = 2;
+                const rankText = `${rankPrefix}#${rank}`;
+                this.ctx.strokeText(rankText, 30, y + 5);
+                this.ctx.fillText(rankText, 30, y + 5);
+
+                // Draw score
+                this.ctx.font = 'bold 18px "Courier New", monospace';
+                this.ctx.fillStyle = isCurrentSession ? '#00FF00' : '#FFFFFF';
+                this.ctx.strokeText(entry.score.toString(), 100, y + 5);
+                this.ctx.fillText(entry.score.toString(), 100, y + 5);
+
+                // Draw date
+                const date = new Date(entry.date);
+                const dateStr = date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+                this.ctx.font = '12px "Courier New", monospace';
+                this.ctx.textAlign = 'right';
+                this.ctx.fillStyle = isCurrentSession ? '#88FF88' : '#AAAAAA';
+                this.ctx.strokeText(dateStr, this.config.width - 30, y + 5);
+                this.ctx.fillText(dateStr, this.config.width - 30, y + 5);
+
+                // Add "NEW" indicator for current session
+                if (isCurrentSession) {
+                    this.ctx.font = 'bold 10px "Courier New", monospace';
+                    this.ctx.textAlign = 'left';
+                    this.ctx.fillStyle = '#00FF00';
+                    this.ctx.strokeText('NEW!', 100, y + 20);
+                    this.ctx.fillText('NEW!', 100, y + 20);
+                }
+            });
+        }
+
+        // Back button
+        this.menuButtons = [];
+        const backButton: MenuButton = {
+            x: (this.config.width - 120) / 2,
+            y: this.config.height - 75,
+            width: 120,
+            height: 40,
+            label: 'Back',
+            action: 'back'
+        };
+        this.menuButtons.push(backButton);
+        this.drawButton(backButton);
+    }
+
+    /**
      * Draw the Skins selection screen
      */
     drawSkinsScreen(): void {
@@ -1366,6 +1511,9 @@ export class UI {
                 break;
             case MenuScreen.SKINS:
                 this.drawSkinsScreen();
+                break;
+            case MenuScreen.LEADERBOARD:
+                this.drawLeaderboardScreen();
                 break;
         }
     }

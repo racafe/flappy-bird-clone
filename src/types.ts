@@ -31,7 +31,8 @@ export enum MenuScreen {
     HOW_TO_PLAY = 'how_to_play',
     ACHIEVEMENTS = 'achievements',
     TUTORIAL = 'tutorial',
-    SKINS = 'skins'
+    SKINS = 'skins',
+    LEADERBOARD = 'leaderboard'
 }
 
 /** Button definition for menu */
@@ -81,6 +82,13 @@ export interface AchievementUnlockData {
     unlockedAt: string; // ISO date string
 }
 
+/** Leaderboard entry */
+export interface LeaderboardEntry {
+    score: number;
+    date: string; // ISO date string
+    id: string; // Unique identifier for highlighting current session
+}
+
 /** Stored game data for persistence */
 export interface StoredGameData {
     highScore: number;
@@ -91,6 +99,7 @@ export interface StoredGameData {
     selectedSkin: string;
     soundEnabled: boolean;
     musicEnabled: boolean;
+    leaderboard: LeaderboardEntry[];
 }
 
 /** Achievement definition */

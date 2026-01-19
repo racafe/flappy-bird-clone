@@ -3,7 +3,7 @@
  * Handles persistent game data using localStorage
  */
 
-import { StoredGameData, AchievementUnlockData } from './types.js';
+import { StoredGameData, AchievementUnlockData, LeaderboardEntry } from './types.js';
 
 const STORAGE_KEY = 'flappy_bird_save';
 
@@ -16,8 +16,11 @@ const DEFAULT_DATA: StoredGameData = {
     achievementDates: [],
     selectedSkin: 'default',
     soundEnabled: true,
-    musicEnabled: true
+    musicEnabled: true,
+    leaderboard: []
 };
+
+const MAX_LEADERBOARD_ENTRIES = 10;
 
 export class Storage {
     private data: StoredGameData;
@@ -203,6 +206,55 @@ export class Storage {
      */
     getAllData(): StoredGameData {
         return { ...this.data };
+    }
+
+    /**
+     * Add a score to the leaderboard
+     * @returns The entry ID if added to leaderboard, null otherwise
+     */
+    addLeaderboardEntry(score: number): string | null {
+        // Only add scores greater than 0
+        if (score <= 0) {
+            return null;
+        }
+
+        const entry: LeaderboardEntry = {
+            score,
+            date: new Date().toISOString(),
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        };
+
+        // Add to leaderboard and sort by score descending
+        this.data.leaderboard.push(entry);
+        this.data.leaderboard.sort((a, b) => b.score - a.score);
+
+        // Keep only top entries
+        if (this.data.leaderboard.length > MAX_LEADERBOARD_ENTRIES) {
+            this.data.leaderboard = this.data.leaderboard.slice(0, MAX_LEADERBOARD_ENTRIES);
+        }
+
+        this.save();
+
+        // Return the entry ID if it's still in the leaderboard
+        const isOnLeaderboard = this.data.leaderboard.some(e => e.id === entry.id);
+        return isOnLeaderboard ? entry.id : null;
+    }
+
+    /**
+     * Get the leaderboard entries
+     */
+    getLeaderboard(): LeaderboardEntry[] {
+        return [...this.data.leaderboard];
+    }
+
+    /**
+     * Check if a score would qualify for the leaderboard
+     */
+    wouldQualifyForLeaderboard(score: number): boolean {
+        if (score <= 0) return false;
+        if (this.data.leaderboard.length < MAX_LEADERBOARD_ENTRIES) return true;
+        const lowestScore = this.data.leaderboard[this.data.leaderboard.length - 1]?.score ?? 0;
+        return score > lowestScore;
     }
 }
 

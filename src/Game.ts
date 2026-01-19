@@ -52,6 +52,7 @@ export class Game {
     private gameOverAchievements: Achievement[] = [];
 
     private animationFrameId: number | null = null;
+    private currentSessionLeaderboardId: string | null = null;
 
     constructor(canvasId: string, config: Partial<GameConfig> = {}) {
         this.config = { ...DEFAULT_CONFIG, ...config };
@@ -289,6 +290,8 @@ export class Game {
         this.isNewHighScore = false;
         this.flapsCount = 0;
         this.gameOverAchievements = [];
+        this.currentSessionLeaderboardId = null;
+        this.ui.setCurrentSessionLeaderboardId(null);
         // Reload high score in case it changed
         this.highScore = storage.getHighScore();
     }
@@ -336,6 +339,9 @@ export class Game {
                         break;
                     case 'skins':
                         this.ui.setCurrentMenuScreen(MenuScreen.SKINS);
+                        break;
+                    case 'leaderboard':
+                        this.ui.setCurrentMenuScreen(MenuScreen.LEADERBOARD);
                         break;
                     case 'back':
                     case 'gotit':
@@ -442,6 +448,8 @@ export class Game {
         this.isNewHighScore = false;
         this.flapsCount = 0;
         this.gameOverAchievements = [];
+        // Keep the leaderboard ID so if they visit leaderboard from main menu,
+        // they can still see their most recent score highlighted
         // Reload high score in case it changed
         this.highScore = storage.getHighScore();
     }
@@ -461,6 +469,10 @@ export class Game {
             this.highScore = this.score;
             this.isNewHighScore = true;
         }
+
+        // Add score to leaderboard and track the entry ID for highlighting
+        this.currentSessionLeaderboardId = storage.addLeaderboardEntry(this.score);
+        this.ui.setCurrentSessionLeaderboardId(this.currentSessionLeaderboardId);
 
         // Check achievements and capture newly unlocked ones
         const stats = this.getStats();

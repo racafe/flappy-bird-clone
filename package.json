@@ -4,14 +4,23 @@
   "description": "A Flappy Bird clone game built with TypeScript and ES6 modules",
   "type": "module",
   "scripts": {
+    "dev": "concurrently \"tsc --watch\" \"live-server --port=3000 --open=/index.html\"",
     "build": "tsc",
     "watch": "tsc --watch",
+    "serve": "live-server --port=3000 --open=/index.html",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["flappy-bird", "game", "typescript", "canvas"],
+  "keywords": [
+    "flappy-bird",
+    "game",
+    "typescript",
+    "canvas"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "live-server": "^1.2.2",
+    "concurrently": "^9.2.1"
   }
 }

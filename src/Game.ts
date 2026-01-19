@@ -301,6 +301,9 @@ export class Game {
                         this.state = GameState.READY;
                         this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
                         break;
+                    case 'tutorial':
+                        this.ui.setCurrentMenuScreen(MenuScreen.TUTORIAL);
+                        break;
                     case 'howtoplay':
                         this.ui.setCurrentMenuScreen(MenuScreen.HOW_TO_PLAY);
                         break;
@@ -308,6 +311,7 @@ export class Game {
                         this.ui.setCurrentMenuScreen(MenuScreen.ACHIEVEMENTS);
                         break;
                     case 'back':
+                    case 'gotit':
                         this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
                         break;
                 }
@@ -526,7 +530,7 @@ export class Game {
             } else if (e.code === 'KeyP' || e.code === 'Escape') {
                 e.preventDefault();
                 if (this.state === GameState.MENU) {
-                    // Escape goes back in menu
+                    // Escape goes back in menu (from any submenu including Tutorial)
                     const currentScreen = this.ui.getCurrentMenuScreen();
                     if (currentScreen !== MenuScreen.MAIN) {
                         this.ui.setCurrentMenuScreen(MenuScreen.MAIN);

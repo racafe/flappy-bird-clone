@@ -29,7 +29,8 @@ export enum GameState {
 export enum MenuScreen {
     MAIN = 'main',
     HOW_TO_PLAY = 'how_to_play',
-    ACHIEVEMENTS = 'achievements'
+    ACHIEVEMENTS = 'achievements',
+    TUTORIAL = 'tutorial'
 }
 
 /** Button definition for menu */

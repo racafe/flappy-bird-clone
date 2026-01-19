@@ -453,13 +453,14 @@ export class UI {
         // Menu buttons
         this.menuButtons = [];
         const buttonWidth = 200;
-        const buttonHeight = 45;
+        const buttonHeight = 40;
         const buttonX = (this.config.width - buttonWidth) / 2;
-        const startY = 300;
-        const buttonGap = 55;
+        const startY = 290;
+        const buttonGap = 50;
 
         const buttons: Array<{ label: string; action: string }> = [
             { label: 'Start Game', action: 'start' },
+            { label: 'Tutorial', action: 'tutorial' },
             { label: 'How to Play', action: 'howtoplay' },
             { label: 'Achievements', action: 'achievements' }
         ];
@@ -534,6 +535,126 @@ export class UI {
         };
         this.menuButtons.push(backButton);
         this.drawButton(backButton);
+    }
+
+    /**
+     * Draw the Tutorial screen with visual demonstration
+     */
+    drawTutorialScreen(): void {
+        this.clearCanvas();
+        this.drawGround();
+        this.drawOverlay();
+
+        // Title
+        this.drawPixelText('TUTORIAL', this.config.width / 2, 40, 28);
+
+        // Visual demonstration area
+        const demoAreaY = 80;
+        const demoAreaHeight = 180;
+
+        // Draw demo background (lighter area)
+        this.ctx.fillStyle = 'rgba(135, 206, 235, 0.3)';
+        this.ctx.fillRect(20, demoAreaY, this.config.width - 40, demoAreaHeight);
+        this.ctx.strokeStyle = '#FFFFFF';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(20, demoAreaY, this.config.width - 40, demoAreaHeight);
+
+        // Draw static illustration: bird approaching pipe gap
+        // Bird
+        if (this.menuBirdSprite) {
+            const birdDemoX = 80;
+            const birdDemoY = demoAreaY + demoAreaHeight / 2 - 24;
+            this.ctx.save();
+            this.ctx.imageSmoothingEnabled = false;
+            this.ctx.drawImage(this.menuBirdSprite, birdDemoX, birdDemoY, 51, 36);
+            this.ctx.restore();
+
+            // Draw arrow showing flap direction
+            this.ctx.strokeStyle = '#FFD700';
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.moveTo(birdDemoX + 25, birdDemoY - 5);
+            this.ctx.lineTo(birdDemoX + 25, birdDemoY - 30);
+            this.ctx.lineTo(birdDemoX + 15, birdDemoY - 20);
+            this.ctx.moveTo(birdDemoX + 25, birdDemoY - 30);
+            this.ctx.lineTo(birdDemoX + 35, birdDemoY - 20);
+            this.ctx.stroke();
+        }
+
+        // Draw simplified pipe pair
+        const pipeX = 220;
+        const pipeWidth = 52;
+        const gapTop = demoAreaY + 50;
+        const gapBottom = demoAreaY + demoAreaHeight - 50;
+
+        // Top pipe
+        this.ctx.fillStyle = '#2ECC71';
+        this.ctx.fillRect(pipeX, demoAreaY, pipeWidth, gapTop - demoAreaY);
+        this.ctx.fillStyle = '#27AE60';
+        this.ctx.fillRect(pipeX - 4, gapTop - 20, pipeWidth + 8, 20);
+
+        // Bottom pipe
+        this.ctx.fillStyle = '#2ECC71';
+        this.ctx.fillRect(pipeX, gapBottom, pipeWidth, demoAreaY + demoAreaHeight - gapBottom);
+        this.ctx.fillStyle = '#27AE60';
+        this.ctx.fillRect(pipeX - 4, gapBottom, pipeWidth + 8, 20);
+
+        // Arrow pointing to gap
+        this.ctx.strokeStyle = '#FFD700';
+        this.ctx.lineWidth = 3;
+        const arrowStartX = pipeX + pipeWidth + 30;
+        const arrowEndX = pipeX + pipeWidth + 5;
+        const gapCenterY = (gapTop + gapBottom) / 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(arrowStartX, gapCenterY);
+        this.ctx.lineTo(arrowEndX, gapCenterY);
+        this.ctx.lineTo(arrowEndX + 10, gapCenterY - 8);
+        this.ctx.moveTo(arrowEndX, gapCenterY);
+        this.ctx.lineTo(arrowEndX + 10, gapCenterY + 8);
+        this.ctx.stroke();
+
+        // Demo labels
+        this.ctx.font = 'bold 11px "Courier New", monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.fillText('FLAP!', 105, demoAreaY + 25);
+        this.ctx.fillText('FLY HERE', pipeX + pipeWidth + 50, gapCenterY + 4);
+
+        // Control instructions
+        const instructionsY = demoAreaY + demoAreaHeight + 25;
+
+        this.ctx.font = 'bold 14px "Courier New", monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'top';
+
+        const instructions = [
+            { text: 'CONTROLS:', color: '#FFD700' },
+            { text: 'SPACE / Click / Tap to flap', color: '#FFFFFF' },
+            { text: '', color: '#FFFFFF' },
+            { text: 'OBJECTIVE:', color: '#FFD700' },
+            { text: 'Avoid pipes, get high score!', color: '#FFFFFF' }
+        ];
+
+        instructions.forEach((line, index) => {
+            this.ctx.fillStyle = line.color;
+            this.ctx.strokeStyle = '#000000';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeText(line.text, this.config.width / 2, instructionsY + index * 24);
+            this.ctx.fillText(line.text, this.config.width / 2, instructionsY + index * 24);
+        });
+
+        // "Got it" button
+        this.menuButtons = [];
+        const gotItButton: MenuButton = {
+            x: (this.config.width - 150) / 2,
+            y: this.config.height - 100,
+            width: 150,
+            height: 45,
+            label: 'Got it!',
+            action: 'gotit'
+        };
+        this.menuButtons.push(gotItButton);
+        this.drawButton(gotItButton);
     }
 
     /**
@@ -640,6 +761,9 @@ export class UI {
                 break;
             case MenuScreen.ACHIEVEMENTS:
                 this.drawAchievementsScreen();
+                break;
+            case MenuScreen.TUTORIAL:
+                this.drawTutorialScreen();
                 break;
         }
     }

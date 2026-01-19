@@ -12,41 +12,43 @@ export type { Achievement } from './types.js';
 
 /** All available achievements */
 export const ACHIEVEMENTS: Achievement[] = [
+    // Score-based milestones
+    {
+        id: 'getting_started',
+        name: 'Getting Started',
+        description: 'Reach 10 points in a single game',
+        condition: (stats) => stats.currentScore >= 10
+    },
+    {
+        id: 'warming_up',
+        name: 'Warming Up',
+        description: 'Reach 25 points in a single game',
+        condition: (stats) => stats.currentScore >= 25
+    },
+    {
+        id: 'night_owl',
+        name: 'Night Owl',
+        description: 'Reach 50 points (reach night)',
+        condition: (stats) => stats.currentScore >= 50
+    },
+    {
+        id: 'century_club',
+        name: 'Century Club',
+        description: 'Reach 100 points in a single game',
+        condition: (stats) => stats.currentScore >= 100
+    },
+    {
+        id: 'flappy_master',
+        name: 'Flappy Master',
+        description: 'Reach 200 points in a single game',
+        condition: (stats) => stats.currentScore >= 200
+    },
+    // Play count achievements
     {
         id: 'first_flight',
         name: 'First Flight',
         description: 'Play your first game',
         condition: (stats) => stats.totalGames >= 1
-    },
-    {
-        id: 'getting_started',
-        name: 'Getting Started',
-        description: 'Score 5 points in a single game',
-        condition: (stats) => stats.currentScore >= 5
-    },
-    {
-        id: 'taking_off',
-        name: 'Taking Off',
-        description: 'Score 10 points in a single game',
-        condition: (stats) => stats.currentScore >= 10
-    },
-    {
-        id: 'high_flyer',
-        name: 'High Flyer',
-        description: 'Score 25 points in a single game',
-        condition: (stats) => stats.currentScore >= 25
-    },
-    {
-        id: 'sky_master',
-        name: 'Sky Master',
-        description: 'Score 50 points in a single game',
-        condition: (stats) => stats.currentScore >= 50
-    },
-    {
-        id: 'legend',
-        name: 'Legend',
-        description: 'Score 100 points in a single game',
-        condition: (stats) => stats.currentScore >= 100
     },
     {
         id: 'dedicated',
@@ -66,6 +68,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         description: 'Play 100 games',
         condition: (stats) => stats.totalGames >= 100
     },
+    // Total score achievements
     {
         id: 'accumulator',
         name: 'Accumulator',

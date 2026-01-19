@@ -23,6 +23,14 @@ const DEFAULT_CONFIG: GameConfig = {
     pipeGapMaxY: 450 // height - groundHeight - 100
 };
 
+/** Difficulty progression constants */
+const DIFFICULTY = {
+    BASE_SPEED: 2,           // Starting pipe speed
+    MAX_SPEED: 5,            // Maximum pipe speed cap
+    SPEED_INCREMENT: 0.15,   // Speed increase per score milestone
+    SCORE_PER_INCREMENT: 5   // Points needed for each speed increase
+};
+
 export class Game {
     private config: GameConfig;
     private canvas: HTMLCanvasElement;
@@ -438,6 +446,16 @@ export class Game {
     }
 
     /**
+     * Calculate current pipe speed based on score (difficulty progression)
+     * Speed increases gradually as score increases, capped at maximum
+     */
+    private getCurrentPipeSpeed(): number {
+        const increments = Math.floor(this.score / DIFFICULTY.SCORE_PER_INCREMENT);
+        const speed = DIFFICULTY.BASE_SPEED + (increments * DIFFICULTY.SPEED_INCREMENT);
+        return Math.min(speed, DIFFICULTY.MAX_SPEED);
+    }
+
+    /**
      * Spawn a new pipe pair
      */
     private spawnPipe(): void {
@@ -447,7 +465,8 @@ export class Game {
             this.config.width,
             gapY,
             this.config.height,
-            this.config.groundHeight
+            this.config.groundHeight,
+            { speed: this.getCurrentPipeSpeed() }
         );
         this.pipes.push(pipe);
     }

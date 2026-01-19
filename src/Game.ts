@@ -77,6 +77,7 @@ export class Game {
 
         // Apply audio settings
         audio.setEnabled(storage.isSoundEnabled());
+        audio.setMusicEnabled(storage.isMusicEnabled());
     }
 
     /**
@@ -226,6 +227,10 @@ export class Game {
      */
     private handleFlap(): void {
         audio.init();
+        // Start music on first user interaction if enabled
+        if (!audio.isMusicPlaying() && audio.isMusicEnabled()) {
+            audio.startMusic();
+        }
 
         if (this.state === GameState.READY) {
             this.state = GameState.PLAYING;
@@ -308,6 +313,10 @@ export class Game {
                     case 'start':
                         this.state = GameState.READY;
                         this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
+                        // Start music on first user interaction if enabled
+                        if (!audio.isMusicPlaying() && audio.isMusicEnabled()) {
+                            audio.startMusic();
+                        }
                         break;
                     case 'tutorial':
                         this.ui.setCurrentMenuScreen(MenuScreen.TUTORIAL);
@@ -322,9 +331,24 @@ export class Game {
                     case 'gotit':
                         this.ui.setCurrentMenuScreen(MenuScreen.MAIN);
                         break;
+                    case 'togglemusic':
+                        this.toggleMusic();
+                        break;
                 }
                 return;
             }
+        }
+    }
+
+    /**
+     * Toggle background music and save preference
+     */
+    private toggleMusic(): void {
+        const enabled = audio.toggleMusic();
+        storage.setMusicEnabled(enabled);
+        // If music was just enabled and not playing, start it
+        if (enabled && !audio.isMusicPlaying()) {
+            audio.startMusic();
         }
     }
 
@@ -377,6 +401,9 @@ export class Game {
                         break;
                     case 'quit':
                         this.reset();
+                        break;
+                    case 'togglemusic':
+                        this.toggleMusic();
                         break;
                 }
                 return true;

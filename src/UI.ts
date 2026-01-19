@@ -8,6 +8,7 @@ import { Bird } from './Bird.js';
 import { Pipe } from './Pipe.js';
 import { storage } from './Storage.js';
 import { achievements } from './Achievements.js';
+import { audio } from './Audio.js';
 
 /** UI color palette */
 const COLORS = {
@@ -659,6 +660,9 @@ export class UI {
         this.ctx.textAlign = 'center';
         this.ctx.fillStyle = '#AAAAAA';
         this.ctx.fillText('Press ESC or P to resume', this.config.width / 2, buttonsY + buttonGap + 70);
+
+        // Draw music toggle button
+        this.drawMusicToggle();
     }
 
     /**
@@ -717,6 +721,59 @@ export class UI {
         this.ctx.textBaseline = 'middle';
         this.ctx.fillStyle = '#FFFFFF';
         this.ctx.fillText(label, x + width / 2, y + height / 2);
+    }
+
+    /**
+     * Draw music toggle button
+     */
+    drawMusicToggle(): void {
+        const size = 36;
+        const x = this.config.width - size - 10;
+        const y = 10;
+        const isMusicEnabled = audio.isMusicEnabled();
+
+        // Button background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        this.ctx.fillRect(x, y, size, size);
+
+        // Button border
+        this.ctx.strokeStyle = isMusicEnabled ? '#00FF00' : '#FF6666';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(x, y, size, size);
+
+        // Music icon (note symbol)
+        this.ctx.font = 'bold 20px "Courier New", monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillStyle = isMusicEnabled ? '#00FF00' : '#FF6666';
+
+        // Draw a musical note using text
+        this.ctx.fillText(isMusicEnabled ? '♪' : '♪', x + size / 2, y + size / 2);
+
+        // Draw strike-through if muted
+        if (!isMusicEnabled) {
+            this.ctx.strokeStyle = '#FF6666';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x + 6, y + size - 6);
+            this.ctx.lineTo(x + size - 6, y + 6);
+            this.ctx.stroke();
+        }
+
+        // Add this button to menu buttons for click detection
+        const musicButton: MenuButton = {
+            x,
+            y,
+            width: size,
+            height: size,
+            label: 'Music',
+            action: 'togglemusic'
+        };
+
+        // Only add if not already present
+        if (!this.menuButtons.some(b => b.action === 'togglemusic')) {
+            this.menuButtons.push(musicButton);
+        }
     }
 
     /**
@@ -796,6 +853,9 @@ export class UI {
             this.menuButtons.push(button);
             this.drawButton(button);
         });
+
+        // Draw music toggle button
+        this.drawMusicToggle();
     }
 
     /**

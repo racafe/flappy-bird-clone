@@ -309,6 +309,13 @@ export class Game {
                 audio.init();
                 audio.playClick();
 
+                // Handle skin selection actions
+                if (button.action.startsWith('select_skin_')) {
+                    const skinId = button.action.replace('select_skin_', '');
+                    this.ui.selectSkin(skinId as import('./Bird.js').BirdSkinId);
+                    return;
+                }
+
                 switch (button.action) {
                     case 'start':
                         this.state = GameState.READY;
@@ -326,6 +333,9 @@ export class Game {
                         break;
                     case 'achievements':
                         this.ui.setCurrentMenuScreen(MenuScreen.ACHIEVEMENTS);
+                        break;
+                    case 'skins':
+                        this.ui.setCurrentMenuScreen(MenuScreen.SKINS);
                         break;
                     case 'back':
                     case 'gotit':

@@ -4,7 +4,7 @@
  */
 
 import { GameConfig, GameState, MenuScreen, MenuButton, RenderContext } from './types.js';
-import { Bird } from './Bird.js';
+import { Bird, BIRD_SKINS, BirdSkinId, createBirdSpriteForSkin } from './Bird.js';
 import { Pipe } from './Pipe.js';
 import { storage } from './Storage.js';
 import { achievements } from './Achievements.js';
@@ -115,6 +115,10 @@ export class UI {
 
     // Achievements screen scroll state
     private achievementsScrollOffset: number = 0;
+
+    // Skin selection state
+    private skinRainbowTimer: number = 0;
+    private skinRainbowFrame: number = 0;
 
     constructor(ctx: RenderContext, config: GameConfig) {
         this.ctx = ctx;
@@ -315,63 +319,28 @@ export class UI {
     }
 
     /**
-     * Create bird sprite for menu display
+     * Create bird sprite for menu display based on selected skin
      */
     private createMenuBirdSprite(): void {
-        const canvas = document.createElement('canvas');
-        canvas.width = 34;
-        canvas.height = 24;
-        const ctx = canvas.getContext('2d')!;
-        ctx.imageSmoothingEnabled = false;
+        const skinId = storage.getSelectedSkin() as BirdSkinId;
+        const validSkinId = skinId in BIRD_SKINS ? skinId : 'default';
+        this.menuBirdSprite = createBirdSpriteForSkin(validSkinId, this.skinRainbowFrame);
+    }
 
-        // Bird body (yellow)
-        ctx.fillStyle = '#F7DC6F';
-        ctx.fillRect(4, 6, 22, 14);
-
-        // Bird belly (lighter yellow)
-        ctx.fillStyle = '#FCF3CF';
-        ctx.fillRect(4, 12, 16, 6);
-
-        // Bird head top curve
-        ctx.fillStyle = '#F7DC6F';
-        ctx.fillRect(8, 4, 14, 4);
-        ctx.fillRect(12, 2, 8, 4);
-
-        // Eye white
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(18, 6, 6, 6);
-
-        // Eye pupil
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(20, 8, 3, 3);
-
-        // Beak (orange)
-        ctx.fillStyle = '#E67E22';
-        ctx.fillRect(26, 10, 8, 4);
-        ctx.fillRect(28, 14, 4, 2);
-
-        // Wing (mid position)
-        ctx.fillStyle = '#D4AC0D';
-        ctx.fillRect(6, 10, 10, 4);
-
-        // Tail feathers
-        ctx.fillStyle = '#D4AC0D';
-        ctx.fillRect(0, 8, 6, 3);
-        ctx.fillRect(0, 13, 6, 3);
-
-        // Outline (dark)
-        ctx.fillStyle = '#2C3E50';
-        ctx.fillRect(12, 0, 8, 2);
-        ctx.fillRect(8, 2, 4, 2);
-        ctx.fillRect(20, 2, 4, 2);
-        ctx.fillRect(6, 4, 2, 2);
-        ctx.fillRect(22, 4, 2, 4);
-        ctx.fillRect(4, 18, 22, 2);
-        ctx.fillRect(2, 16, 2, 2);
-        ctx.fillRect(26, 16, 2, 2);
-        ctx.fillRect(2, 6, 2, 10);
-
-        this.menuBirdSprite = canvas;
+    /**
+     * Update menu bird sprite for the selected skin (handles rainbow animation)
+     */
+    updateMenuBirdSprite(): void {
+        const skinId = storage.getSelectedSkin() as BirdSkinId;
+        if (skinId === 'rainbow') {
+            this.skinRainbowTimer++;
+            if (this.skinRainbowTimer % 15 === 0) {
+                this.skinRainbowFrame = (this.skinRainbowFrame + 1) % 6;
+                this.menuBirdSprite = createBirdSpriteForSkin('rainbow', this.skinRainbowFrame);
+            }
+        } else {
+            this.createMenuBirdSprite();
+        }
     }
 
     /**
@@ -808,15 +777,15 @@ export class UI {
             this.ctx.restore();
 
             // Skin label
-            const skinName = storage.getSelectedSkin();
+            const skinId = storage.getSelectedSkin() as BirdSkinId;
+            const skin = BIRD_SKINS[skinId] || BIRD_SKINS.default;
             this.ctx.font = 'bold 12px "Courier New", monospace';
             this.ctx.textAlign = 'center';
             this.ctx.fillStyle = '#FFD700';
             this.ctx.strokeStyle = '#000000';
             this.ctx.lineWidth = 2;
-            const skinLabel = skinName === 'default' ? 'Classic Bird' : skinName;
-            this.ctx.strokeText(skinLabel, this.config.width / 2, birdY + 24 * scale + 15);
-            this.ctx.fillText(skinLabel, this.config.width / 2, birdY + 24 * scale + 15);
+            this.ctx.strokeText(skin.name, this.config.width / 2, birdY + 24 * scale + 15);
+            this.ctx.fillText(skin.name, this.config.width / 2, birdY + 24 * scale + 15);
         }
 
         // High score display
@@ -832,13 +801,14 @@ export class UI {
         // Menu buttons
         this.menuButtons = [];
         const buttonWidth = 200;
-        const buttonHeight = 40;
+        const buttonHeight = 36;
         const buttonX = (this.config.width - buttonWidth) / 2;
         const startY = 290;
-        const buttonGap = 50;
+        const buttonGap = 44;
 
         const buttons: Array<{ label: string; action: string }> = [
             { label: 'Start Game', action: 'start' },
+            { label: 'Bird Skins', action: 'skins' },
             { label: 'Tutorial', action: 'tutorial' },
             { label: 'How to Play', action: 'howtoplay' },
             { label: 'Achievements', action: 'achievements' }
@@ -1115,6 +1085,9 @@ export class UI {
 
             // Third line: unlock date OR skin reward info
             this.ctx.font = '8px "Courier New", monospace';
+            const skinName = achievement.skinReward && achievement.skinReward in BIRD_SKINS
+                ? BIRD_SKINS[achievement.skinReward as BirdSkinId].name
+                : achievement.skinReward;
             if (achievement.unlocked && achievement.unlockedAt) {
                 // Show completion date for unlocked achievements
                 const date = new Date(achievement.unlockedAt);
@@ -1123,21 +1096,22 @@ export class UI {
                     day: 'numeric',
                     year: 'numeric'
                 });
-                this.ctx.fillStyle = '#88FF88';
-                this.ctx.fillText(`Unlocked: ${dateStr}`, boxX + 8, y + 40);
+                if (achievement.skinReward) {
+                    // Show earned skin for unlocked achievements with skin
+                    this.ctx.fillStyle = '#FFD700';
+                    const shortDateStr = date.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                    this.ctx.fillText(`${shortDateStr} | Skin: ${skinName}`, boxX + 8, y + 40);
+                } else {
+                    this.ctx.fillStyle = '#88FF88';
+                    this.ctx.fillText(`Unlocked: ${dateStr}`, boxX + 8, y + 40);
+                }
             } else if (!achievement.unlocked && achievement.skinReward) {
                 // Show skin reward for locked achievements
                 this.ctx.fillStyle = '#FFD700';
-                this.ctx.fillText(`Unlocks: ${achievement.skinReward}`, boxX + 8, y + 40);
-            } else if (achievement.unlocked && achievement.skinReward) {
-                // Show earned skin for unlocked achievements with skin
-                this.ctx.fillStyle = '#FFD700';
-                const date = achievement.unlockedAt ? new Date(achievement.unlockedAt) : null;
-                const dateStr = date ? date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric'
-                }) : '';
-                this.ctx.fillText(`${dateStr} | Skin: ${achievement.skinReward}`, boxX + 8, y + 40);
+                this.ctx.fillText(`Unlocks: ${skinName}`, boxX + 8, y + 40);
             }
 
             // Checkmark or lock icon
@@ -1228,6 +1202,150 @@ export class UI {
     }
 
     /**
+     * Draw the Skins selection screen
+     */
+    drawSkinsScreen(): void {
+        this.clearCanvas();
+        this.drawGround();
+        this.drawOverlay();
+
+        // Title
+        this.drawPixelText('BIRD SKINS', this.config.width / 2, 40, 28);
+
+        // Get all skin IDs and unlocked skins
+        const allSkinIds: BirdSkinId[] = ['default', 'blue', 'red', 'golden', 'rainbow'];
+        const unlockedSkins = achievements.getUnlockedSkins();
+        const currentSkinId = storage.getSelectedSkin() as BirdSkinId;
+
+        // Skin display area
+        const cardWidth = 160;
+        const cardHeight = 110;
+        const cardsPerRow = 2;
+        const startX = (this.config.width - (cardWidth * cardsPerRow + 20)) / 2;
+        const startY = 85;
+        const rowGap = 15;
+        const colGap = 20;
+
+        this.menuButtons = [];
+
+        allSkinIds.forEach((skinId, index) => {
+            const skin = BIRD_SKINS[skinId];
+            const isUnlocked = unlockedSkins.includes(skinId);
+            const isSelected = currentSkinId === skinId;
+
+            const row = Math.floor(index / cardsPerRow);
+            const col = index % cardsPerRow;
+            const x = startX + col * (cardWidth + colGap);
+            const y = startY + row * (cardHeight + rowGap);
+
+            // Card background
+            if (isSelected) {
+                this.ctx.fillStyle = 'rgba(0, 150, 0, 0.7)';
+            } else if (isUnlocked) {
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            } else {
+                this.ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+            }
+            this.ctx.fillRect(x, y, cardWidth, cardHeight);
+
+            // Card border
+            this.ctx.strokeStyle = isSelected ? '#00FF00' : (isUnlocked ? '#FFFFFF' : '#666666');
+            this.ctx.lineWidth = isSelected ? 3 : 2;
+            this.ctx.strokeRect(x, y, cardWidth, cardHeight);
+
+            // Draw bird sprite (centered in card)
+            const birdSprite = createBirdSpriteForSkin(skinId, skinId === 'rainbow' ? this.skinRainbowFrame : 0);
+            const birdScale = 2;
+            const birdX = x + (cardWidth - 34 * birdScale) / 2;
+            const birdY = y + 12;
+
+            this.ctx.save();
+            this.ctx.imageSmoothingEnabled = false;
+            if (!isUnlocked) {
+                this.ctx.globalAlpha = 0.3;
+            }
+            this.ctx.drawImage(birdSprite, birdX, birdY, 34 * birdScale, 24 * birdScale);
+            this.ctx.restore();
+
+            // Lock icon for locked skins
+            if (!isUnlocked) {
+                this.ctx.font = 'bold 20px "Courier New", monospace';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillStyle = '#888888';
+                this.ctx.fillText('🔒', x + cardWidth / 2, birdY + 30);
+            }
+
+            // Skin name
+            this.ctx.font = 'bold 11px "Courier New", monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillStyle = isUnlocked ? '#FFFFFF' : '#888888';
+            this.ctx.fillText(skin.name, x + cardWidth / 2, y + cardHeight - 28);
+
+            // Unlock requirement or "Selected" label
+            this.ctx.font = '9px "Courier New", monospace';
+            if (isSelected) {
+                this.ctx.fillStyle = '#00FF00';
+                this.ctx.fillText('EQUIPPED', x + cardWidth / 2, y + cardHeight - 12);
+            } else if (isUnlocked) {
+                this.ctx.fillStyle = '#AAAAAA';
+                this.ctx.fillText('Click to equip', x + cardWidth / 2, y + cardHeight - 12);
+            } else {
+                this.ctx.fillStyle = '#FFD700';
+                const requirement = this.getSkinUnlockRequirement(skinId);
+                this.ctx.fillText(requirement, x + cardWidth / 2, y + cardHeight - 12);
+            }
+
+            // Add button for unlocked skins
+            if (isUnlocked && !isSelected) {
+                const skinButton: MenuButton = {
+                    x,
+                    y,
+                    width: cardWidth,
+                    height: cardHeight,
+                    label: skin.name,
+                    action: `select_skin_${skinId}`
+                };
+                this.menuButtons.push(skinButton);
+            }
+        });
+
+        // Back button
+        const backButton: MenuButton = {
+            x: (this.config.width - 120) / 2,
+            y: this.config.height - 75,
+            width: 120,
+            height: 40,
+            label: 'Back',
+            action: 'back'
+        };
+        this.menuButtons.push(backButton);
+        this.drawButton(backButton);
+    }
+
+    /**
+     * Get unlock requirement text for a skin
+     */
+    private getSkinUnlockRequirement(skinId: BirdSkinId): string {
+        switch (skinId) {
+            case 'blue': return 'Score 10 pts';
+            case 'red': return 'Score 50 pts';
+            case 'golden': return 'Score 100 pts';
+            case 'rainbow': return 'Score 200 pts';
+            default: return '';
+        }
+    }
+
+    /**
+     * Select a bird skin
+     */
+    selectSkin(skinId: BirdSkinId): void {
+        if (achievements.isSkinUnlocked(skinId)) {
+            storage.setSelectedSkin(skinId);
+            this.createMenuBirdSprite();
+        }
+    }
+
+    /**
      * Draw the current menu screen
      */
     drawMenu(screen: MenuScreen): void {
@@ -1245,6 +1363,9 @@ export class UI {
                 break;
             case MenuScreen.TUTORIAL:
                 this.drawTutorialScreen();
+                break;
+            case MenuScreen.SKINS:
+                this.drawSkinsScreen();
                 break;
         }
     }

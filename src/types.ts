@@ -30,7 +30,8 @@ export enum MenuScreen {
     MAIN = 'main',
     HOW_TO_PLAY = 'how_to_play',
     ACHIEVEMENTS = 'achievements',
-    TUTORIAL = 'tutorial'
+    TUTORIAL = 'tutorial',
+    SKINS = 'skins'
 }
 
 /** Button definition for menu */

@@ -12,40 +12,34 @@ export type { Achievement } from './types.js';
 
 /** All available achievements */
 export const ACHIEVEMENTS: Achievement[] = [
-    // Score-based milestones
+    // Score-based milestones with bird skin rewards
     {
         id: 'getting_started',
         name: 'Getting Started',
         description: 'Reach 10 points in a single game',
-        condition: (stats) => stats.currentScore >= 10
-    },
-    {
-        id: 'warming_up',
-        name: 'Warming Up',
-        description: 'Reach 25 points in a single game',
-        condition: (stats) => stats.currentScore >= 25,
-        skinReward: 'Blue Bird'
+        condition: (stats) => stats.currentScore >= 10,
+        skinReward: 'blue'
     },
     {
         id: 'night_owl',
         name: 'Night Owl',
         description: 'Reach 50 points (reach night)',
         condition: (stats) => stats.currentScore >= 50,
-        skinReward: 'Night Bird'
+        skinReward: 'red'
     },
     {
         id: 'century_club',
         name: 'Century Club',
         description: 'Reach 100 points in a single game',
         condition: (stats) => stats.currentScore >= 100,
-        skinReward: 'Golden Bird'
+        skinReward: 'golden'
     },
     {
         id: 'flappy_master',
         name: 'Flappy Master',
         description: 'Reach 200 points in a single game',
         condition: (stats) => stats.currentScore >= 200,
-        skinReward: 'Rainbow Bird'
+        skinReward: 'rainbow'
     },
     // Play count achievements
     {
@@ -58,22 +52,19 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'dedicated',
         name: 'Dedicated',
         description: 'Play 10 games',
-        condition: (stats) => stats.totalGames >= 10,
-        skinReward: 'Red Bird'
+        condition: (stats) => stats.totalGames >= 10
     },
     {
         id: 'persistent',
         name: 'Persistent',
         description: 'Play 50 games',
-        condition: (stats) => stats.totalGames >= 50,
-        skinReward: 'Purple Bird'
+        condition: (stats) => stats.totalGames >= 50
     },
     {
         id: 'addicted',
         name: 'Addicted',
         description: 'Play 100 games',
-        condition: (stats) => stats.totalGames >= 100,
-        skinReward: 'Cyber Bird'
+        condition: (stats) => stats.totalGames >= 100
     },
     // Total score achievements
     {
@@ -86,15 +77,13 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'collector',
         name: 'Collector',
         description: 'Accumulate 500 total points',
-        condition: (stats) => stats.totalScore >= 500,
-        skinReward: 'Silver Bird'
+        condition: (stats) => stats.totalScore >= 500
     },
     {
         id: 'hoarder',
         name: 'Hoarder',
         description: 'Accumulate 1000 total points',
-        condition: (stats) => stats.totalScore >= 1000,
-        skinReward: 'Diamond Bird'
+        condition: (stats) => stats.totalScore >= 1000
     }
 ];
 
@@ -193,6 +182,27 @@ export class Achievements {
      */
     getCompletionPercentage(): number {
         return Math.round((this.unlockedIds.size / ACHIEVEMENTS.length) * 100);
+    }
+
+    /**
+     * Get list of unlocked skin IDs
+     */
+    getUnlockedSkins(): string[] {
+        const skins: string[] = ['default']; // Default is always available
+        for (const achievement of ACHIEVEMENTS) {
+            if (achievement.skinReward && this.unlockedIds.has(achievement.id)) {
+                skins.push(achievement.skinReward);
+            }
+        }
+        return skins;
+    }
+
+    /**
+     * Check if a specific skin is unlocked
+     */
+    isSkinUnlocked(skinId: string): boolean {
+        if (skinId === 'default') return true;
+        return ACHIEVEMENTS.some(a => a.skinReward === skinId && this.unlockedIds.has(a.id));
     }
 }
 

@@ -18,7 +18,7 @@ const DEFAULT_CONFIG: GameConfig = {
     groundHeight: 50,
     birdStartX: 80,
     birdStartY: 250,
-    pipeSpawnInterval: 90,
+    pipeSpawnInterval: 140,
     pipeGapMinY: 100,
     pipeGapMaxY: 450 // height - groundHeight - 100
 };

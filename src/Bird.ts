@@ -8,8 +8,8 @@ import { storage } from './Storage.js';
 
 /** Default bird configuration */
 const DEFAULT_CONFIG: BirdConfig = {
-    gravity: 0.5,
-    flapVelocity: -8,
+    gravity: 0.3,
+    flapVelocity: -4.5,
     maxFallVelocity: 10,
     rotationSpeed: 3,
     maxUpRotation: -30,

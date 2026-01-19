@@ -31,6 +31,24 @@ export class Audio {
     }
 
     /**
+     * Suspend audio context (pause all audio)
+     */
+    suspend(): void {
+        if (this.context && this.context.state === 'running') {
+            this.context.suspend();
+        }
+    }
+
+    /**
+     * Resume audio context (unpause audio)
+     */
+    resume(): void {
+        if (this.context && this.context.state === 'suspended') {
+            this.context.resume();
+        }
+    }
+
+    /**
      * Play flap sound effect
      */
     playFlap(): void {

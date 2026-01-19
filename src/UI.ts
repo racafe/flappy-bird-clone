@@ -330,16 +330,47 @@ export class UI {
     }
 
     /**
-     * Draw pause overlay
+     * Draw pause overlay with resume and quit options
      */
     drawPauseScreen(): void {
         this.drawOverlay();
-        this.drawPixelText('PAUSED', this.config.width / 2, this.config.height / 2 - 30, 36);
+        this.drawPixelText('PAUSED', this.config.width / 2, this.config.height / 2 - 80, 36);
 
-        this.ctx.font = 'bold 16px "Courier New", monospace';
+        // Pause menu buttons
+        this.menuButtons = [];
+        const buttonWidth = 150;
+        const buttonHeight = 40;
+        const buttonX = (this.config.width - buttonWidth) / 2;
+        const buttonsY = this.config.height / 2 - 20;
+        const buttonGap = 50;
+
+        const resumeButton: MenuButton = {
+            x: buttonX,
+            y: buttonsY,
+            width: buttonWidth,
+            height: buttonHeight,
+            label: 'Resume',
+            action: 'resume'
+        };
+        this.menuButtons.push(resumeButton);
+        this.drawButton(resumeButton);
+
+        const quitButton: MenuButton = {
+            x: buttonX,
+            y: buttonsY + buttonGap,
+            width: buttonWidth,
+            height: buttonHeight,
+            label: 'Quit',
+            action: 'quit'
+        };
+        this.menuButtons.push(quitButton);
+        this.drawButton(quitButton);
+
+        // Keyboard hint
+        this.ctx.font = 'bold 14px "Courier New", monospace';
         this.ctx.textAlign = 'center';
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.fillText('Press P to resume', this.config.width / 2, this.config.height / 2 + 30);
+        this.ctx.fillStyle = '#AAAAAA';
+        this.ctx.fillText('Press ESC or P to resume', this.config.width / 2, buttonsY + buttonGap + 70);
     }
 
     /**

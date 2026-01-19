@@ -340,9 +340,41 @@ export class Game {
     private togglePause(): void {
         if (this.state === GameState.PLAYING) {
             this.state = GameState.PAUSED;
+            audio.suspend();
         } else if (this.state === GameState.PAUSED) {
             this.state = GameState.PLAYING;
+            audio.resume();
         }
+    }
+
+    /**
+     * Handle pause menu button click
+     */
+    private handlePauseClick(x: number, y: number): boolean {
+        const buttons = this.ui.getMenuButtons();
+
+        for (const button of buttons) {
+            if (
+                x >= button.x &&
+                x <= button.x + button.width &&
+                y >= button.y &&
+                y <= button.y + button.height
+            ) {
+                audio.resume();
+                audio.playClick();
+
+                switch (button.action) {
+                    case 'resume':
+                        this.state = GameState.PLAYING;
+                        break;
+                    case 'quit':
+                        this.reset();
+                        break;
+                }
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -550,6 +582,8 @@ export class Game {
                 this.handleMenuClick(coords.x, coords.y);
             } else if (this.state === GameState.GAME_OVER) {
                 this.handleGameOverClick(coords.x, coords.y);
+            } else if (this.state === GameState.PAUSED) {
+                this.handlePauseClick(coords.x, coords.y);
             } else {
                 this.handleFlap();
             }
@@ -565,6 +599,8 @@ export class Game {
                 this.handleMenuClick(coords.x, coords.y);
             } else if (this.state === GameState.GAME_OVER) {
                 this.handleGameOverClick(coords.x, coords.y);
+            } else if (this.state === GameState.PAUSED) {
+                this.handlePauseClick(coords.x, coords.y);
             } else {
                 this.handleFlap();
             }

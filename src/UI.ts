@@ -19,6 +19,86 @@ const COLORS = {
     overlay: 'rgba(0, 0, 0, 0.5)'
 };
 
+/** Time of day phases based on score */
+enum TimeOfDay {
+    DAY = 'day',
+    SUNSET = 'sunset',
+    NIGHT = 'night'
+}
+
+/** Color palette for each time of day */
+interface TimeColors {
+    skyTop: string;
+    skyBottom: string;
+    ground: string;
+    grass: string;
+}
+
+const TIME_PALETTES: Record<TimeOfDay, TimeColors> = {
+    [TimeOfDay.DAY]: {
+        skyTop: '#4A90D9',
+        skyBottom: '#87CEEB',
+        ground: '#8B4513',
+        grass: '#228B22'
+    },
+    [TimeOfDay.SUNSET]: {
+        skyTop: '#2C3E50',
+        skyBottom: '#E67E22',
+        ground: '#5D3A1A',
+        grass: '#1A5C1A'
+    },
+    [TimeOfDay.NIGHT]: {
+        skyTop: '#0D1B2A',
+        skyBottom: '#1B263B',
+        ground: '#3D2914',
+        grass: '#0F3D0F'
+    }
+};
+
+/** Score thresholds for time phases */
+const TIME_THRESHOLDS = {
+    dayEnd: 25,
+    sunsetEnd: 50
+};
+
+/** Parallax element interface */
+interface ParallaxElement {
+    x: number;
+    y: number;
+    size: number;
+    speed: number;
+    opacity: number;
+}
+
+/** Parse hex color to RGB components */
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
+}
+
+/** Convert RGB to hex */
+function rgbToHex(r: number, g: number, b: number): string {
+    return '#' + [r, g, b].map(x => {
+        const hex = Math.round(x).toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    }).join('');
+}
+
+/** Interpolate between two colors */
+function lerpColor(color1: string, color2: string, t: number): string {
+    const c1 = hexToRgb(color1);
+    const c2 = hexToRgb(color2);
+    return rgbToHex(
+        c1.r + (c2.r - c1.r) * t,
+        c1.g + (c2.g - c1.g) * t,
+        c1.b + (c2.b - c1.b) * t
+    );
+}
+
 export class UI {
     private ctx: RenderContext;
     private config: GameConfig;
@@ -28,10 +108,206 @@ export class UI {
     private menuBirdFrame: number = 0;
     private menuBirdTimer: number = 0;
 
+    // Day/night cycle state
+    private clouds: ParallaxElement[] = [];
+    private stars: ParallaxElement[] = [];
+
     constructor(ctx: RenderContext, config: GameConfig) {
         this.ctx = ctx;
         this.config = config;
         this.createMenuBirdSprite();
+        this.initParallaxElements();
+    }
+
+    /**
+     * Initialize parallax elements (clouds and stars)
+     */
+    private initParallaxElements(): void {
+        // Create clouds (visible during day and sunset)
+        for (let i = 0; i < 5; i++) {
+            this.clouds.push({
+                x: Math.random() * this.config.width,
+                y: 50 + Math.random() * 150,
+                size: 30 + Math.random() * 40,
+                speed: 0.3 + Math.random() * 0.3,
+                opacity: 0.6 + Math.random() * 0.4
+            });
+        }
+
+        // Create stars (visible during night)
+        for (let i = 0; i < 30; i++) {
+            this.stars.push({
+                x: Math.random() * this.config.width,
+                y: Math.random() * (this.config.height - this.config.groundHeight - 100),
+                size: 1 + Math.random() * 2,
+                speed: 0.1 + Math.random() * 0.2,
+                opacity: 0.3 + Math.random() * 0.7
+            });
+        }
+    }
+
+    /**
+     * Get current time of day and transition progress based on score
+     */
+    private getTimeState(score: number): { time: TimeOfDay; transition: number; nextTime: TimeOfDay | null } {
+        if (score < TIME_THRESHOLDS.dayEnd) {
+            // Day phase (0-24): transition to sunset starts at score 20
+            const transitionStart = TIME_THRESHOLDS.dayEnd - 5;
+            if (score >= transitionStart) {
+                return {
+                    time: TimeOfDay.DAY,
+                    transition: (score - transitionStart) / 5,
+                    nextTime: TimeOfDay.SUNSET
+                };
+            }
+            return { time: TimeOfDay.DAY, transition: 0, nextTime: null };
+        } else if (score < TIME_THRESHOLDS.sunsetEnd) {
+            // Sunset phase (25-49): transition to night starts at score 45
+            const transitionStart = TIME_THRESHOLDS.sunsetEnd - 5;
+            if (score >= transitionStart) {
+                return {
+                    time: TimeOfDay.SUNSET,
+                    transition: (score - transitionStart) / 5,
+                    nextTime: TimeOfDay.NIGHT
+                };
+            }
+            return { time: TimeOfDay.SUNSET, transition: 0, nextTime: null };
+        } else {
+            // Night phase (50+)
+            return { time: TimeOfDay.NIGHT, transition: 0, nextTime: null };
+        }
+    }
+
+    /**
+     * Get interpolated colors based on current time state
+     */
+    private getInterpolatedColors(score: number): TimeColors {
+        const state = this.getTimeState(score);
+        const currentPalette = TIME_PALETTES[state.time];
+
+        if (state.transition > 0 && state.nextTime) {
+            const nextPalette = TIME_PALETTES[state.nextTime];
+            return {
+                skyTop: lerpColor(currentPalette.skyTop, nextPalette.skyTop, state.transition),
+                skyBottom: lerpColor(currentPalette.skyBottom, nextPalette.skyBottom, state.transition),
+                ground: lerpColor(currentPalette.ground, nextPalette.ground, state.transition),
+                grass: lerpColor(currentPalette.grass, nextPalette.grass, state.transition)
+            };
+        }
+
+        return currentPalette;
+    }
+
+    /**
+     * Draw gradient sky background
+     */
+    private drawSkyGradient(colors: TimeColors): void {
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, this.config.height - this.config.groundHeight);
+        gradient.addColorStop(0, colors.skyTop);
+        gradient.addColorStop(1, colors.skyBottom);
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.config.width, this.config.height - this.config.groundHeight);
+    }
+
+    /**
+     * Draw parallax clouds
+     */
+    private drawClouds(opacity: number): void {
+        if (opacity <= 0) return;
+
+        this.ctx.save();
+        this.ctx.globalAlpha = opacity;
+
+        for (const cloud of this.clouds) {
+            this.drawCloud(cloud.x, cloud.y, cloud.size, cloud.opacity);
+        }
+
+        this.ctx.restore();
+    }
+
+    /**
+     * Draw a single cloud
+     */
+    private drawCloud(x: number, y: number, size: number, opacity: number): void {
+        this.ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+
+        // Draw cloud as overlapping circles
+        const baseRadius = size / 2;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
+        this.ctx.arc(x + baseRadius * 0.8, y - baseRadius * 0.3, baseRadius * 0.7, 0, Math.PI * 2);
+        this.ctx.arc(x + baseRadius * 1.4, y, baseRadius * 0.6, 0, Math.PI * 2);
+        this.ctx.arc(x - baseRadius * 0.6, y - baseRadius * 0.2, baseRadius * 0.5, 0, Math.PI * 2);
+        this.ctx.fill();
+    }
+
+    /**
+     * Draw parallax stars
+     */
+    private drawStars(opacity: number): void {
+        if (opacity <= 0) return;
+
+        this.ctx.save();
+        this.ctx.globalAlpha = opacity;
+
+        for (const star of this.stars) {
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+            this.ctx.beginPath();
+            this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+
+        this.ctx.restore();
+    }
+
+    /**
+     * Update parallax element positions
+     */
+    updateParallax(): void {
+        // Update clouds
+        for (const cloud of this.clouds) {
+            cloud.x -= cloud.speed;
+            if (cloud.x + cloud.size < 0) {
+                cloud.x = this.config.width + cloud.size;
+                cloud.y = 50 + Math.random() * 150;
+            }
+        }
+
+        // Update stars (slower movement)
+        for (const star of this.stars) {
+            star.x -= star.speed;
+            if (star.x < 0) {
+                star.x = this.config.width;
+                star.y = Math.random() * (this.config.height - this.config.groundHeight - 100);
+            }
+        }
+    }
+
+    /**
+     * Get parallax element opacities based on time of day
+     */
+    private getParallaxOpacities(score: number): { clouds: number; stars: number } {
+        const state = this.getTimeState(score);
+
+        let cloudOpacity = 0;
+        let starOpacity = 0;
+
+        if (state.time === TimeOfDay.DAY) {
+            cloudOpacity = 1;
+            if (state.nextTime === TimeOfDay.SUNSET) {
+                cloudOpacity = 1 - state.transition * 0.3; // Fade slightly during sunset transition
+            }
+        } else if (state.time === TimeOfDay.SUNSET) {
+            cloudOpacity = 0.7;
+            if (state.nextTime === TimeOfDay.NIGHT) {
+                cloudOpacity = 0.7 * (1 - state.transition);
+                starOpacity = state.transition;
+            }
+        } else {
+            starOpacity = 1;
+        }
+
+        return { clouds: cloudOpacity, stars: starOpacity };
     }
 
     /**
@@ -95,19 +371,31 @@ export class UI {
     }
 
     /**
-     * Clear the canvas with sky background
+     * Clear the canvas with sky background (score-based day/night cycle)
      */
-    clearCanvas(): void {
-        this.ctx.fillStyle = COLORS.sky;
-        this.ctx.fillRect(0, 0, this.config.width, this.config.height);
+    clearCanvas(score: number = 0): void {
+        const colors = this.getInterpolatedColors(score);
+
+        // Draw gradient sky
+        this.drawSkyGradient(colors);
+
+        // Draw parallax elements
+        const opacities = this.getParallaxOpacities(score);
+        this.drawStars(opacities.stars);
+        this.drawClouds(opacities.clouds);
+
+        // Update parallax positions
+        this.updateParallax();
     }
 
     /**
-     * Draw the ground
+     * Draw the ground with score-based colors
      */
-    drawGround(): void {
+    drawGround(score: number = 0): void {
+        const colors = this.getInterpolatedColors(score);
+
         // Ground base
-        this.ctx.fillStyle = COLORS.ground;
+        this.ctx.fillStyle = colors.ground;
         this.ctx.fillRect(
             0,
             this.config.height - this.config.groundHeight,
@@ -116,7 +404,7 @@ export class UI {
         );
 
         // Grass on top
-        this.ctx.fillStyle = COLORS.grass;
+        this.ctx.fillStyle = colors.grass;
         this.ctx.fillRect(
             0,
             this.config.height - this.config.groundHeight,
@@ -847,10 +1135,10 @@ export class UI {
             return;
         }
 
-        this.clearCanvas();
+        this.clearCanvas(score);
         this.drawPipes(pipes);
         this.drawBird(bird);
-        this.drawGround();
+        this.drawGround(score);
         this.drawScore(score);
 
         if (state === GameState.READY) {

@@ -544,6 +544,11 @@ export class UI {
         const buttonsY = hasAchievements ? this.config.height - 130 : this.config.height / 2 + 60;
         const buttonGap = 50;
 
+        // Initialize selection if not set
+        if (this.selectedMenuIndex === null) {
+            this.selectedMenuIndex = 0;
+        }
+
         const playAgainButton: MenuButton = {
             x: buttonX,
             y: buttonsY,
@@ -553,7 +558,7 @@ export class UI {
             action: 'playagain'
         };
         this.menuButtons.push(playAgainButton);
-        this.drawButton(playAgainButton);
+        this.drawButton(playAgainButton, this.selectedMenuIndex === 0);
 
         const mainMenuButton: MenuButton = {
             x: buttonX,
@@ -564,7 +569,7 @@ export class UI {
             action: 'mainmenu'
         };
         this.menuButtons.push(mainMenuButton);
-        this.drawButton(mainMenuButton);
+        this.drawButton(mainMenuButton, this.selectedMenuIndex === 1);
     }
 
     /**
@@ -609,6 +614,11 @@ export class UI {
         const buttonsY = this.config.height / 2 - 20;
         const buttonGap = 50;
 
+        // Initialize selection if not set
+        if (this.selectedMenuIndex === null) {
+            this.selectedMenuIndex = 0;
+        }
+
         const resumeButton: MenuButton = {
             x: buttonX,
             y: buttonsY,
@@ -618,7 +628,7 @@ export class UI {
             action: 'resume'
         };
         this.menuButtons.push(resumeButton);
-        this.drawButton(resumeButton);
+        this.drawButton(resumeButton, this.selectedMenuIndex === 0);
 
         const quitButton: MenuButton = {
             x: buttonX,
@@ -629,7 +639,7 @@ export class UI {
             action: 'quit'
         };
         this.menuButtons.push(quitButton);
-        this.drawButton(quitButton);
+        this.drawButton(quitButton, this.selectedMenuIndex === 1);
 
         // Keyboard hint
         this.ctx.font = 'bold 14px "Courier New", monospace';
@@ -682,20 +692,35 @@ export class UI {
     drawButton(button: MenuButton, isHovered: boolean = false): void {
         const { x, y, width, height, label } = button;
 
-        // Button background
-        this.ctx.fillStyle = isHovered ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.6)';
+        // Button background - make selected button much more visible
+        if (isHovered) {
+            // Selected: bright yellow/gold background with higher opacity
+            this.ctx.fillStyle = 'rgba(236, 216, 101, 0.4)';
+        } else {
+            // Not selected: dark background
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        }
         this.ctx.fillRect(x, y, width, height);
 
-        // Button border
-        this.ctx.strokeStyle = '#FFFFFF';
-        this.ctx.lineWidth = 2;
+        // Button border - thicker and brighter for selected button
+        if (isHovered) {
+            this.ctx.strokeStyle = '#FFD700'; // Gold border for selected
+            this.ctx.lineWidth = 3;
+        } else {
+            this.ctx.strokeStyle = '#FFFFFF';
+            this.ctx.lineWidth = 2;
+        }
         this.ctx.strokeRect(x, y, width, height);
 
-        // Button text
+        // Button text - brighter for selected button
         this.ctx.font = 'bold 18px "Courier New", monospace';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillStyle = '#FFFFFF';
+        if (isHovered) {
+            this.ctx.fillStyle = '#FFD700'; // Gold text for selected
+        } else {
+            this.ctx.fillStyle = '#FFFFFF';
+        }
         this.ctx.fillText(label, x + width / 2, y + height / 2);
     }
 
@@ -1004,6 +1029,12 @@ export class UI {
 
         // "Got it" button
         this.menuButtons = [];
+
+        // Initialize selection if not set
+        if (this.selectedMenuIndex === null) {
+            this.selectedMenuIndex = 0;
+        }
+
         const gotItButton: MenuButton = {
             x: (this.config.width - 150) / 2,
             y: this.config.height - 100,
@@ -1013,7 +1044,7 @@ export class UI {
             action: 'gotit'
         };
         this.menuButtons.push(gotItButton);
-        this.drawButton(gotItButton);
+        this.drawButton(gotItButton, this.selectedMenuIndex === 0);
     }
 
     /**

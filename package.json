@@ -4,7 +4,7 @@
   "description": "A Flappy Bird clone game built with TypeScript and ES6 modules",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"tsc --watch\" \"live-server --port=3000 --open=/index.html\"",
+    "dev": "concurrently \"tsc --watch\" \"live-server --port=3000 --open=/index.html --watch=src,index.html,styles.css\"",
     "build": "tsc",
     "watch": "tsc --watch",
     "serve": "live-server --port=3000 --open=/index.html",
